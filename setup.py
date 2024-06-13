@@ -16,7 +16,6 @@ setup(
         "scipy",
         "matplotlib",
         "flake8",
-        "python-sat",
         "pytest",
         "pytest-cov",
         "pytest-xdist",
