@@ -1,6 +1,9 @@
 import numpy as np
 import koala as kl
 from koala.lattice import Lattice
+from koala.graph_utils import shift_vertex, _sorted_vertex_adjacent_edges
+
+
 
 
 # TODO -- Fix the shape part her eto make it more square
@@ -43,7 +46,7 @@ def koala_mikado(density, relax_steps=0):
 
     klattice = Lattice(coords, bonds, np.zeros_like(bonds))
     return klattice
-    
+
 
 def get_drs(coords, coords2=None, period=None):
     if coords2 is None:
@@ -54,55 +57,59 @@ def get_drs(coords, coords2=None, period=None):
         drs.append(np.add.outer(coords[:, i], -coords2[:, i]).flatten())
     drs = np.array(drs)
     if period is not None:
-        drs = drs - period[:, None] * np.sign(drs) * (np.abs(drs) > period[:, None]/2)
+        drs = drs - period[:, None] * np.sign(drs) * (np.abs(drs) > period[:, None] / 2)
     return drs
 
 
-
-
-def relaxation_2(coords, bonds, force = None, force_params = None, z_min = 6):
+def relaxation_2(coords, bonds, force=None, force_params=None, z_min=6):
     dim = np.size(coords, 1)
     if force is None:
+
         def force(dist):
             return np.zeros(np.shape(dist))
+
     displacement = np.zeros(np.shape(coords))
-    for n in np.arange(np.size(coords,0)) :
-        neighbors = np.vstack((np.isin(bonds[:,1],np.array([n])),
-                            np.isin(bonds[:,0],np.array([n])))).T
-        if np.sum(neighbors)>=z_min:
+    for n in np.arange(np.size(coords, 0)):
+        neighbors = np.vstack(
+            (np.isin(bonds[:, 1], np.array([n])), np.isin(bonds[:, 0], np.array([n])))
+        ).T
+        if np.sum(neighbors) >= z_min:
             neighbors = bonds[neighbors]
             neighbors = coords[neighbors]
-            dist = get_drs(neighbors, coords[n,:].reshape(1,dim))
-            resultante = (np.sum(force(dist, **force_params), 1))
-#                           +np.sum(bond_force, 0))
-#             print(resultante)
-            displacement[n,:] += resultante
-    return coords+displacement
+            dist = get_drs(neighbors, coords[n, :].reshape(1, dim))
+            resultante = np.sum(force(dist, **force_params), 1)
+            #                           +np.sum(bond_force, 0))
+            #             print(resultante)
+            displacement[n, :] += resultante
+    return coords + displacement
+
 
 def spring_2(dist, l0, k):
-    norm = np.sum(dist**2,0)
+    norm = np.sum(dist**2, 0)
     norm = np.sqrt(norm)
-#     print(dist)
-    intensity = k*(norm-l0)/norm
-#     print(np.shape(intensity), np.shape(dist))
-    return intensity*dist
+    #     print(dist)
+    intensity = k * (norm - l0) / norm
+    #     print(np.shape(intensity), np.shape(dist))
+    return intensity * dist
 
 
 def intersection(p1, t1, p2, t2):
     theta = t2 - t1
-    phi = np.arctan2(p2/p1 - np.cos(theta), np.sin(theta))
+    phi = np.arctan2(p2 / p1 - np.cos(theta), np.sin(theta))
     r = p1 / np.cos(phi)
     return r, phi + t1
 
+
 def cut_graph(coords, bonds, shape):
     # Return the subgraph within shape
-    #mask = shape(coords)
+    # mask = shape(coords)
     mask = np.array([shape(coords[k]) for k in range(len(coords))])
     new_coords = coords[mask]
     index_map = np.cumsum(mask) - 1
     new_bonds = bonds[np.logical_and(*mask[bonds].T)]
     new_bonds = index_map[new_bonds]
     return new_coords, new_bonds
+
 
 def relaxation(coords, bonds, prop=1, repeats=5):
     """Relax the coordinates of the nodes in the graph.
@@ -124,7 +131,7 @@ def relaxation(coords, bonds, prop=1, repeats=5):
         Array of relaxed coordinates.
     bonds : np.array
         Array of bonds between the nodes.
-    """ 
+    """
 
     neighbours_list = np.zeros([len(coords), 4], dtype=int)
 
@@ -141,17 +148,15 @@ def relaxation(coords, bonds, prop=1, repeats=5):
         neighbours_list[i] = neighbours
 
     # move each point to the center of mass of its neighbours, n times
-    for n in range(repeats):    
-        full_coordinated = np.all(neighbours_list != -1, axis=1) 
+    for n in range(repeats):
+        full_coordinated = np.all(neighbours_list != -1, axis=1)
         positions_neighbours = coords[neighbours_list]
         new_centers = np.mean(positions_neighbours, axis=1)
-        coords = (
-            (prop*full_coordinated[:, None]) * new_centers
-            + (1 - prop*full_coordinated[:, None]) * coords
-        )
+        coords = (prop * full_coordinated[:, None]) * new_centers + (
+            1 - prop * full_coordinated[:, None]
+        ) * coords
 
     return coords, bonds
-
 
 
 def random_line_graph(R, density, shape=None, relax_steps=0):
@@ -211,7 +216,7 @@ def random_line_graph(R, density, shape=None, relax_steps=0):
 
     # remove points outside radius R
     if shape is None:
-        shape = lambda x: np.abs(x[0]) < R and np.abs(x[1])<R
+        shape = lambda x: np.abs(x[0]) < R and np.abs(x[1]) < R
         """
         def shape(x):
             if (np.abs(x[0])<R and np.abs(x[1])<R):
@@ -223,9 +228,37 @@ def random_line_graph(R, density, shape=None, relax_steps=0):
 
     # relax the graph
 
-
     coords, bonds = relaxation(coords, bonds, prop=1, repeats=relax_steps)
     # for _ in range(relax_steps):
     #     coords = relaxation_2(coords, bonds, spring_2, {'l0':1/density, 'k':.3}, z_min=1)
 
     return coords, bonds
+
+
+def better_relax(coords, bonds, crossing, reg_steps=10):
+    for x in range(reg_steps):
+        dual_vectors = coords[bonds][:, 1] - coords[bonds][:, 0] + crossing
+        neighbors = _sorted_vertex_adjacent_edges(coords, bonds, dual_vectors)
+        # find the shift for each vertex based on its neighbours
+        vertex_shifts = np.zeros((coords.shape[0], 2))
+        for e, neigh in enumerate(neighbors):
+            neighbour_points = bonds[neigh]
+            direction_positions = np.where(neighbour_points == e)
+            direction = 1 - 2 * direction_positions[1]
+            vectors = dual_vectors[neigh] * direction[:, None]
+            vertex_shifts[e] = np.mean(vectors, axis=0)
+
+        # move the vertices
+        lattice_data = (
+            coords,
+            bonds,
+            crossing,
+            neighbors,
+        )
+        for v, shift in enumerate(vertex_shifts):
+            v_pos, e_ind, c_val = shift_vertex(lattice_data, v, shift)
+            lattice_data = (v_pos, e_ind, c_val, neighbors)
+
+        coords, bonds, crossing = (v_pos, e_ind, c_val)
+
+    return coords, bonds, crossing
