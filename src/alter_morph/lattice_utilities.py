@@ -134,6 +134,8 @@ def add_contacts(
                 [edges_out, cross_starting_edges.T, cross_ending_edges.T]
             )
 
+    if len(added_indices_out) == 1:
+        added_indices_out = added_indices_out[0]
     added_indices_out = tuple(added_indices_out)
 
     crossing_out = np.zeros((len(edges_out), 2), dtype=int)

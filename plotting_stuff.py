@@ -3,7 +3,7 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from scipy.spatial import Voronoi, voronoi_plot_2d
 
-
+import numpy as np
 
 
 def color_voronoi(
@@ -27,7 +27,16 @@ def color_voronoi(
     min_x, max_x = min(positions[:, 0]), max(positions[:, 0])
     min_y, max_y = min(positions[:, 1]), max(positions[:, 1])
 
+    # add points at limits to make sure the voronoi diagram is closed
+    positions = np.vstack(
+        [positions,
+        [-10, -10],
+        [-10, 10],
+        [10, -10],
+        [10,  10],])
 
+    avg_z = np.mean(z)
+    z = np.concatenate([z, [avg_z, avg_z, avg_z, avg_z]])
 
     vor = Voronoi(positions)
 
@@ -60,7 +69,7 @@ def color_voronoi(
 
 
 
-    ax.set_xlim(min_x, max_x)
-    ax.set_ylim(min_y, max_y)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
 
     return ax

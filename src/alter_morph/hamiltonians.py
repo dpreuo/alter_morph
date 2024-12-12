@@ -291,7 +291,7 @@ def spectral_function(
 
     if n_k is None:
         n_k = np.sqrt(lattice.n_vertices).astype(int)
-        print(n_k)
+        # print(n_k)
 
     positions = lattice.vertices.positions
 
