@@ -1,4 +1,8 @@
 from koala.lattice import Lattice
+from koala import graph_utils as gu
+from koala.voronization import generate_lattice
+from koala.pointsets import uniform
+from koala import example_graphs as eg
 import numpy as np
 
 
@@ -143,3 +147,37 @@ def add_contacts(
     if return_added_indices:
         return Lattice(vertices, edges_out, crossing_out), added_indices_out
     return Lattice(vertices, edges_out, crossing_out)
+
+
+def alter_lattice_maker(length: int, type: str) -> Lattice:
+    """A convenience function for generating the lattices we're after in 
+    this paper.
+
+    Args:
+        length (int): Rough length measure of size of the lattice.
+        type (str): Type of lattice to make, Must be one of 'square', 
+            'voronoi', 'amorphous-4'. 
+
+    Returns:
+        Lattice: The generated lattice.
+    """
+    
+    n_vertices = length**2
+
+    if type == 'square':
+        rows = np.round(np.sqrt(n_vertices)).astype(int)
+        lattice = eg.square_lattice(rows, rows)
+    elif type == 'voronoi':
+        vor_lat = generate_lattice(uniform(n_vertices // 2))
+        lattice = gu.lloyd_relaxation(vor_lat, 10)
+    elif type == 'amorphous-4':
+        l2 = generate_lattice(uniform(n_vertices // 3))
+        l2 = gu.lloyd_relaxation(l2, 10)
+        exp_lat = gu.vertices_to_polygon(l2)
+        dimer_exp = np.zeros(exp_lat.n_edges)
+        dimer_exp[: l2.n_edges] = 1
+        lattice = gu.dimer_collapse(exp_lat, dimer_exp)
+    else:
+        raise ValueError(f"Type {type} not recognized.")
+    
+    return lattice

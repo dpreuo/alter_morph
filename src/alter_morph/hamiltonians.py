@@ -21,7 +21,7 @@ def _hopping_matrix(t1, t2, theta, n=1):
 
 
 def alt_hamiltonian(
-    lattice: Lattice, t1: float, t2: float, J: float, m_values: np.ndarray
+    lattice: Lattice, t1: float, t2: float, J: float, m_values: np.ndarray, boundary_phase=None
 ):
     """Generates an altermagnetic Hamiltonian for a given lattice
 
@@ -31,6 +31,7 @@ def alt_hamiltonian(
         t2 (float): Weak hopping parameter where direction opposes orbital
         J (float): Interacting coupling parameter
         m_values (np.ndarray): Mean field values for the magnetic moments per site
+        boundary_phase (np.ndarray, optional): Phase for twisted boundary conditions in x and y. Defaults to 0.
 
     Returns:
         np.ndarray: The Hamiltonian matrix
@@ -41,9 +42,14 @@ def alt_hamiltonian(
     ham = np.zeros((4 * lattice.n_vertices, 4 * lattice.n_vertices))
     for n_edge in range(lattice.n_edges):
         vector = lattice.edges.vectors[n_edge]
+        crossing = lattice.edges.crossings[n_edge]
         e0, e1 = lattice.edges.indices[n_edge]
         theta = np.arctan2(vector[0], vector[1])
         h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta))
+        if boundary_phase is not None and np.any(np.nonzero(crossing)):
+            phase = boundary_phase*crossing
+            h0_term *= np.exp(1j * boundary_phase)
+
         ham[4 * e0 : 4 * e0 + 4, 4 * e1 : 4 * e1 + 4] = h0_term
 
     ham += ham.T
@@ -59,7 +65,7 @@ def alt_hamiltonian(
     return ham
 
 
-def find_m_values(v, filling):
+def find_m_values(states, filling):
     """Given a set of eigenvectors, calculates the mean field values for the altermagnetic magnetic moments
 
     Args:
@@ -70,22 +76,14 @@ def find_m_values(v, filling):
         np.ndarray: The spatially resolved mean field values
     """
 
-    fermi_occupation = np.linspace(0, 1, len(v)) <= filling
-    n_vertices = len(v) // 4
-    m_legend = np.array([1, -1, -1, 1] * n_vertices)
-    occupations = v * v.conj()
-    m_x_s_resolved = m_legend[:, None] * occupations
-    # average over the four states in each site
-    m_per_site_avg = (
-        m_x_s_resolved[::4, :]
-        + m_x_s_resolved[1::4, :]
-        + m_x_s_resolved[2::4, :]
-        + m_x_s_resolved[3::4, :]
-    )
-    # average over occupied states
-    m_values = np.sum(m_per_site_avg * fermi_occupation[None, :], axis=1)
+    fermi_occupation = np.linspace(0, 1, len(states)) <= filling
+    projector = states * fermi_occupation @ states.T.conj()
 
-    return m_values
+    m_legend = np.tile(np.array([1, -1, -1, 1]), len(states) // 4)
+    m_values = np.diag(projector) * m_legend
+    m_values = m_values.reshape(-1,4).sum(axis=-1)
+    
+    return m_values 
 
 
 def find_m_per_state(v: np.ndarray):
