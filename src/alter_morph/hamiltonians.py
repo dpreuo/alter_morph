@@ -83,6 +83,7 @@ def alt_hamiltonian(
 
     return ham
 
+
 def find_m_values(states, filling):
     """Given a set of eigenvectors, calculates the mean field values for the altermagnetic magnetic moments
 
@@ -110,10 +111,9 @@ def find_m_values(states, filling):
     return m_values.real
 
 
-
 def find_m_per_state(v: np.ndarray):
     """
-    Given a set of eigenvectors, calculates the average mean 
+    Given a set of eigenvectors, calculates the average mean
     field values for the altermagnetic magnetic moments per eigenstate
 
     Args:
@@ -146,6 +146,7 @@ def find_spin_per_state(v):
     spin_x_s_resolved = spin_legend[:, None] * occupations
     return np.sum(spin_x_s_resolved, axis=0)
 
+
 def fermi_probability(fermi_spectrum, beta):
     """
     Calculates the fermionic probability distribution.
@@ -168,6 +169,7 @@ def fermi_probability(fermi_spectrum, beta):
 
     return f
 
+
 # useful for testing
 def qwz_hamiltonian(lattice: Lattice, u_vals=-1.465, h_field=0):
     """Generates the Hamiltonian for the Qi-Wu-Zhang model
@@ -180,7 +182,6 @@ def qwz_hamiltonian(lattice: Lattice, u_vals=-1.465, h_field=0):
     Returns:
         np.ndarray: The Hamiltonian
     """
-
 
     if isinstance(u_vals, (int, float, complex)):
         u_vals = np.array([u_vals] * lattice.n_vertices)
@@ -266,17 +267,17 @@ def kubo_conductivity(lattice, hamiltonian, energies, states, fermi_level, beta,
     jy_in_energy_basis = states.conj().T @ jy @ states
 
     xxmatrix = (
-        (overall_factor * jx_in_energy_basis) @ jx_in_energy_basis
-    )  # - jx_in_energy_basis @ (overall_factor * jx_in_energy_basis)
+        overall_factor * jx_in_energy_basis
+    ) @ jx_in_energy_basis  # - jx_in_energy_basis @ (overall_factor * jx_in_energy_basis)
     yymatrix = (
-        (overall_factor * jy_in_energy_basis) @ jy_in_energy_basis
-    )  # - jy_in_energy_basis @ (overall_factor * jy_in_energy_basis)
+        overall_factor * jy_in_energy_basis
+    ) @ jy_in_energy_basis  # - jy_in_energy_basis @ (overall_factor * jy_in_energy_basis)
     xymatrix = (
-        (overall_factor * jx_in_energy_basis) @ jy_in_energy_basis
-    )  # - jx_in_energy_basis @ (overall_factor * jy_in_energy_basis)
+        overall_factor * jx_in_energy_basis
+    ) @ jy_in_energy_basis  # - jx_in_energy_basis @ (overall_factor * jy_in_energy_basis)
     yxmatrix = (
-        (overall_factor * jy_in_energy_basis) @ jx_in_energy_basis
-    )  # - jy_in_energy_basis @ (overall_factor * jx_in_energy_basis)
+        overall_factor * jy_in_energy_basis
+    ) @ jx_in_energy_basis  # - jy_in_energy_basis @ (overall_factor * jx_in_energy_basis)
 
     sigma_xx = np.trace(xxmatrix)
     sigma_yy = np.trace(yymatrix)

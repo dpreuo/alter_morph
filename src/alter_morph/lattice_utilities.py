@@ -5,7 +5,7 @@ from koala.pointsets import uniform
 from koala import example_graphs as eg
 import numpy as np
 
-
+# TODO: There is a bug here when you have a vertex that has all edges that cross the boundaries
 def add_contacts(
     lattice: Lattice,
     x_y_contacts=[True, False],
@@ -13,23 +13,29 @@ def add_contacts(
     make_uniform=False,
     return_added_indices=False,
 ):
-    """Add contacts to the lattice in the x and y directions.
+    """Add contacts to the lattice in the x and y directions. The new vertices 
+    are added to the end of the lattice in the
 
     Args:
-        lattice (Lattice): Lattice to add contacts to. Must have periodic boundary conditions in the chosen directions.
-        x_y_contacts (list, optional): List of booleans indicating whether to add contacts in the x and y directions. Defaults to [True, False].
-        cross_edges (bool, optional): Whether to add perpendicular edges to the new vertices. Defaults to False.
-        make_uniform (bool, optional): Whether to evenly space the new vertices. Defaults to False.
-        return_added_indices (bool, optional): Whether to return the indices of the added vertices. Defaults to False.
+        lattice (Lattice): Lattice to add contacts to. Must have periodic 
+            boundary conditions in the chosen directions.
+        x_y_contacts (list, optional): List of booleans indicating whether 
+            to add contacts in the x and y directions. Defaults to [True, False].
+        cross_edges (bool, optional): Whether to add perpendicular edges to 
+            the new vertices. Defaults to False.
+        make_uniform (bool, optional): Whether to evenly space the new vertices. 
+            Defaults to False.
+        return_added_indices (bool, optional): Whether to return the indices 
+            of the added vertices. Defaults to False.
 
     Returns:
         Lattice: Lattice with added contacts.
         tuple: Tuple of indices of the added vertices, if return_added_indices is True.
     """
 
-    vertices = lattice.vertices.positions
-    edges = lattice.edges.indices
-    crossing = lattice.edges.crossing
+    vertices = lattice.vertices.positions.copy()
+    edges = lattice.edges.indices.copy()
+    crossing = lattice.edges.crossing.copy()
 
     # check the lattice has periodic boundary conditions in the chosen directions
     for xy in range(2):
@@ -49,14 +55,15 @@ def add_contacts(
         edges[crossing[:, xy] < 0] = edges[crossing[:, xy] < 0][:, ::-1]
         crossing[crossing[:, xy] < 0] = -crossing[crossing[:, xy] < 0]
 
-    # rescale_vertices
+    # rescale the whole system to be a little smaller
     L_eff = np.sqrt(lattice.n_edges)
-    rescaling = (L_eff - 4) / L_eff
+    rescaling = (L_eff) / (L_eff + 4)
     vertices = (vertices - 0.5) * rescaling + 0.5
 
-    # remove crossing edges
+    # create new output lattice with remoevd crossing edges
     edges_out = edges[np.sum(np.abs(crossing), axis=1) == 0]
     crossing_out = crossing[np.sum(np.abs(crossing), axis=1) == 0]
+    original_indices_out = []
     added_indices_out = []
     for xy in range(2):
         if not x_y_contacts[xy]:
@@ -73,8 +80,8 @@ def add_contacts(
         # create new vertices
         new_starting_vertex_positions = starting_positions
         new_ending_vertex_positions = ending_positions
-        new_starting_vertex_positions[:, xy] = 1 / L_eff
-        new_ending_vertex_positions[:, xy] = 1 - 1 / L_eff
+        new_starting_vertex_positions[:, xy] = 1 / (L_eff + 4)
+        new_ending_vertex_positions[:, xy] = 1 - 1 / (L_eff + 4)
 
         # evenly space the new vertices
         new_starting_order = np.argsort(new_starting_vertex_positions[:, 1 - xy])
@@ -125,6 +132,7 @@ def add_contacts(
             len(vertices) - len(new_ending_vertex_positions), len(vertices)
         )[new_ending_order]
 
+        original_indices_out.append((starting_vertices[new_starting_order], ending_vertices[new_ending_order]))
         added_indices_out.append((starting_indices, ending_indices))
 
         # add perpendicular to the new vertices if cross_edges is True
@@ -138,39 +146,45 @@ def add_contacts(
                 [edges_out, cross_starting_edges.T, cross_ending_edges.T]
             )
 
-    if len(added_indices_out) == 1:
-        added_indices_out = added_indices_out[0]
+    # if len(added_indices_out) == 1:
+    #     added_indices_out = added_indices_out[0]
+    #     original_indices_out = original_indices_out[0]
     added_indices_out = tuple(added_indices_out)
+    original_indices_out = tuple(original_indices_out)
 
     crossing_out = np.zeros((len(edges_out), 2), dtype=int)
 
     if return_added_indices:
-        return Lattice(vertices, edges_out, crossing_out), added_indices_out
+        return (
+            Lattice(vertices, edges_out, crossing_out),
+            added_indices_out,
+            original_indices_out,
+        )
     return Lattice(vertices, edges_out, crossing_out)
 
 
 def alter_lattice_maker(length: int, type: str) -> Lattice:
-    """A convenience function for generating the lattices we're after in 
+    """A convenience function for generating the lattices we're after in
     this paper.
 
     Args:
         length (int): Rough length measure of size of the lattice.
-        type (str): Type of lattice to make, Must be one of 'square', 
-            'voronoi', 'amorphous-4'. 
+        type (str): Type of lattice to make, Must be one of 'square',
+            'voronoi', 'amorphous-4'.
 
     Returns:
         Lattice: The generated lattice.
     """
-    
+
     n_vertices = length**2
 
-    if type == 'square':
+    if type == "square":
         rows = np.round(np.sqrt(n_vertices)).astype(int)
         lattice = eg.square_lattice(rows, rows)
-    elif type == 'voronoi':
+    elif type == "voronoi":
         vor_lat = generate_lattice(uniform(n_vertices // 2))
         lattice = gu.lloyd_relaxation(vor_lat, 10)
-    elif type == 'amorphous-4':
+    elif type == "amorphous-4":
         l2 = generate_lattice(uniform(n_vertices // 3))
         l2 = gu.lloyd_relaxation(l2, 10)
         exp_lat = gu.vertices_to_polygon(l2)
@@ -179,5 +193,5 @@ def alter_lattice_maker(length: int, type: str) -> Lattice:
         lattice = gu.dimer_collapse(exp_lat, dimer_exp)
     else:
         raise ValueError(f"Type {type} not recognized.")
-    
+
     return lattice

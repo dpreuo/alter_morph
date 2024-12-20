@@ -4,8 +4,6 @@ from koala.lattice import Lattice
 from koala.graph_utils import shift_vertex, _sorted_vertex_adjacent_edges
 
 
-
-
 # TODO -- Fix the shape part here to make it more square
 def koala_mikado(density, relax_steps=0):
     """Wrap the mikado generation function and return a koala lattice. Normalize to the [0, 1] interval.

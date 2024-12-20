@@ -4,6 +4,7 @@ import numpy as np
 from scipy import linalg as la
 from tqdm import tqdm
 
+
 def single_hartree_fock_step(
     lattice: Lattice,
     initial_parameters: dict,

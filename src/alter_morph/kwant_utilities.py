@@ -3,9 +3,11 @@ from koala.lattice import Lattice
 import tinyarray as ta
 import kwant
 from .hamiltonians import _hopping_matrix
+from .lattice_utilities import add_contacts
 
 
 class Amorphous(kwant.builder.SiteFamily):
+
     def __init__(self, norbs: int, lattice: Lattice):
         """Create a site family object for a kwant lattice.
 
@@ -158,3 +160,209 @@ def lattice_ham_to_kwant(lattice: Lattice, hamiltonian: np.ndarray):
                 kwant_syst[kwant_lattice(i), kwant_lattice(j)] = element
 
     return kwant_lattice, kwant_syst
+
+def crack_hamiltonian_for_contacts_kwant(lattice: Lattice, hamiltonian: np.ndarray):
+    """Given a lattice with periodic x and open y, we crack the lattice upen and add
+    contacts, doubling every site on an edge crossing bond and placing the copy on the
+    other side as a contact. Takes the Hamiltonian and copies the relevant edges so
+    that the bonds connecting you to the contact have the right couplings.
+
+    Args:
+        lattice (Lattice): The lattice
+        hamiltonian (np.ndarray): The hamiltonian
+
+    Returns:
+        Lattice: The new lattice with contacts
+        Amorphous: The kwant lattice describing the same lattice with contacts
+        kwant.Builder: The kwant system with the new Hamiltonian
+        tuple: The new vertices that have been added corresponding to the left and right contacts
+
+    """
+
+    n_orbitals = int(hamiltonian.shape[0] / lattice.n_vertices)
+
+    # check the lattice has the right boundaries
+    total_boundaries = np.sum(np.abs(lattice.edges.crossing), axis=0)
+    assert total_boundaries[0] != 0, "lattice has must be periodic in x"
+    assert total_boundaries[1] == 0, "lattice must have open boundaries in y"
+
+    # find the version of the lattice with contact zones added
+    contact_lattice, new_vertices, original_vertices = add_contacts(
+        lattice,
+        return_added_indices=True,
+        # cross_edges=True,
+        make_uniform=True,
+    )
+
+    # figure out all the onsite terms in the new lattice
+    original_onsite_matrices = np.array(
+        [
+            hamiltonian[
+                i * n_orbitals : (i + 1) * n_orbitals,
+                i * n_orbitals : (i + 1) * n_orbitals,
+            ]
+            for i in range(lattice.n_vertices)
+        ]
+    )
+    new_onsite_matrices = np.concatenate(
+        [
+            original_onsite_matrices,  # sites in the original lattice,
+            original_onsite_matrices[
+                original_vertices[0][0]
+            ],  # sites on the left contact
+            original_onsite_matrices[
+                original_vertices[0][1]
+            ],  # sites on the right contact
+        ],
+        axis=0,
+    )
+
+    # now we have to deal with which new vertex corresponds to which old vertex
+    new = np.concatenate(new_vertices[0])
+    old = np.concatenate(original_vertices[0])
+    new_vertex_dict = {new[i]: old[i] for i in range(len(old))}
+    old_vertex_indices = np.arange(lattice.n_vertices)
+    old_vertex_dict = {
+        old_vertex_indices[i]: old_vertex_indices[i] for i in range(lattice.n_vertices)
+    }
+    vertex_remapping_dict = old_vertex_dict | new_vertex_dict
+    assert len(vertex_remapping_dict) == len(old_vertex_dict) + len(
+        new_vertex_dict
+    ), "something has gone wrong when checking all the new vertices"
+
+    new_coupling_terms = []
+    for edge in contact_lattice.edges.indices:
+
+        # if it's an original edge then we can just use the coupling term
+        if np.sort(edge).tolist() in np.sort(lattice.edges.indices, axis=1).tolist():
+            i1 = edge[0]
+            i2 = edge[1]
+            coupling = hamiltonian[
+                i1 * n_orbitals : (i1 + 1) * n_orbitals,
+                i2 * n_orbitals : (i2 + 1) * n_orbitals,
+            ]
+            new_coupling_terms.append(coupling)
+
+        # otherwise you have to find the original edge that
+        # this corresponds to, and use the original coupling
+        else:
+            og_edge = np.array(
+                [vertex_remapping_dict[edge[0]], vertex_remapping_dict[edge[1]]]
+            )
+            i1 = og_edge[0]
+            i2 = og_edge[1]
+            coupling = hamiltonian[
+                i1 * n_orbitals : (i1 + 1) * n_orbitals,
+                i2 * n_orbitals : (i2 + 1) * n_orbitals,
+            ]
+
+            new_coupling_terms.append(coupling)
+
+    # check you got a coupling for every edge and every onsite:
+    assert len(new_onsite_matrices) == contact_lattice.n_vertices
+    assert len(new_coupling_terms) == len(contact_lattice.edges.indices)
+
+    # now we can build the new hamiltonian
+    kwant_system = kwant.Builder()
+    kwant_lattice = Amorphous(n_orbitals, contact_lattice)
+
+    # add the onsite terms
+    for i, onsite in enumerate(new_onsite_matrices):
+        kwant_system[kwant_lattice(i)] = onsite
+
+    # add the coupling terms
+    for edge, coupling in zip(contact_lattice.edges.indices, new_coupling_terms):
+        i1, i2 = edge
+        kwant_system[kwant_lattice(i1), kwant_lattice(i2)] = coupling
+
+    return contact_lattice, kwant_lattice, kwant_system, new_vertices[0]
+
+def attach_leads_to_cracked(
+    contact_lattice: Lattice,
+    kwant_lattice: Amorphous,
+    kwant_system: kwant.builder.Builder,
+    contact_vertices: np.ndarray,
+    lead_onsite: np.ndarray,
+    lead_coupling: np.ndarray,
+):
+    """ Given a kwant system with contacts, attach leads to the contacts. The leads 
+    are assumed to be square lattices with the same spacing as the contacts. The
+    contacts are assumed to be on the left and right of the system. The leads are
+    created with specified onsite and coupling terms.
+
+    Args:
+        contact_lattice (Lattice): The koala lattice with contacts
+        kwant_lattice (Amorphous): The same kwant lattice with contacts
+        kwant_system (kwant.builder.Builder): The kwant system, created with the crack_hamiltonian_for_contacts_kwant function
+        contact_vertices (np.ndarray): The indices of the vertices that in the left and right contacts
+        lead_onsite (np.ndarray): The onsite terms for the leads
+        lead_coupling (np.ndarray): The coupling terms for the leads
+
+    Returns:
+        kwant.builder.Builder: The kwant system with leads attached
+        kwant.builder.Builder: The left lead
+        kwant.builder.Builder: The right lead
+    """
+
+    n_orbitals = kwant_lattice.norbs
+    assert np.all(
+        lead_onsite.shape == (n_orbitals, n_orbitals)
+    ), "lead_onsite has wrong shape"
+    assert np.all(
+        lead_coupling.shape == (n_orbitals, n_orbitals)
+    ), "lead_coupling has wrong shape"
+
+    # find sites for the leads, and positions of the contacts
+    left_vertices = contact_vertices[0]
+    left_positions = contact_lattice.vertices.positions[left_vertices]
+    left_y_range = (np.min(left_positions[:, 1]), np.max(left_positions[:, 1]))
+    left_a = (left_y_range[1] - left_y_range[0]) / (len(left_vertices) - 1)
+    # left_shift = left_y_range[0] / left_a
+
+    right_vertices = contact_vertices[1]
+    right_positions = contact_lattice.vertices.positions[right_vertices]
+    right_y_range = (np.min(right_positions[:, 1]), np.max(right_positions[:, 1]))
+    right_a = (right_y_range[1] - right_y_range[0]) / (len(right_vertices) - 1)
+    # right_shift = right_y_range[0] / right_a
+
+    # create leads
+    left_lead_lattice = kwant.lattice.square(a=left_a, norbs=4)
+    left_lead_lattice.offset = (0, left_y_range[0])
+    left_lead_symmetry = kwant.TranslationalSymmetry(left_lead_lattice.vec((-1, 0)))
+
+    left_lead = kwant.Builder(left_lead_symmetry)
+    for i in range(len(left_vertices)):
+        left_lead[left_lead_lattice(0, i)] = lead_onsite
+
+    right_lead_lattice = kwant.lattice.square(a=right_a, norbs=4)
+    right_lead_lattice.offset = (1, right_y_range[0])
+    right_lead_symmetry = kwant.TranslationalSymmetry(right_lead_lattice.vec((1, 0)))
+
+    right_lead = kwant.Builder(right_lead_symmetry)
+    for i in range(len(right_vertices)):
+        right_lead[right_lead_lattice(0, i)] = lead_onsite
+
+    left_lead[left_lead_lattice.neighbors()] = lead_coupling
+    right_lead[right_lead_lattice.neighbors()] = lead_coupling
+
+    for i in range(len(left_vertices)):
+        kwant_system[(left_lead_lattice(0, i))] = lead_onsite
+        kwant_system[left_lead_lattice(0, i), kwant_lattice(left_vertices[i])] = (
+            lead_coupling
+        )
+    kwant_system[left_lead_lattice.neighbors()] = lead_coupling
+
+    for i in range(len(right_vertices)):
+        kwant_system[right_lead_lattice(0, i)] = lead_onsite
+        kwant_system[right_lead_lattice(0, i), kwant_lattice(right_vertices[i])] = (
+            lead_coupling
+        )
+    kwant_system[right_lead_lattice.neighbors()] = lead_coupling
+
+    kwant_system.attach_lead(left_lead)
+    kwant_system.attach_lead(right_lead)
+
+    kwant_system.eradicate_dangling()
+
+    return kwant_system, left_lead, right_lead
+
