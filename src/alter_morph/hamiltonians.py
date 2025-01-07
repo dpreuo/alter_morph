@@ -2,7 +2,7 @@ from koala.lattice import Lattice
 import numpy as np
 
 
-def _hopping_matrix(t1, t2, theta, theta_offset=0, n=1):
+def _hopping_matrix(t1, t2, theta, theta_offset=0., n=1):
     # val and perus ansatz for the orbital resolved hopping matrix
     theta = theta + theta_offset
     tdiff = t1 - t2
@@ -26,6 +26,7 @@ def alt_hamiltonian(
     t2: float,
     J: float,
     m_values: np.ndarray,
+    theta_offset=0.,
     boundary_phase=None,
 ):
     """Generates an altermagnetic Hamiltonian for a given lattice
@@ -58,7 +59,7 @@ def alt_hamiltonian(
         crossing = lattice.edges.crossing[n_edge]
         e0, e1 = lattice.edges.indices[n_edge]
         theta = np.arctan2(vector[0], vector[1])
-        h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta))
+        h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta, theta_offset))
 
         # and apply boundary phase if twisting boundaries
         if (

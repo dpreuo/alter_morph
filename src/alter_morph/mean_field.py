@@ -19,7 +19,8 @@ def single_hartree_fock_step(
         initial_parameters["t2"],
         initial_parameters["J"],
         m_values,
-        boundary_phase,
+        theta_offset=initial_parameters["theta_offset"],
+        boundary_phase=boundary_phase,
     )
     energies, states = la.eigh(hamiltonian)
 
