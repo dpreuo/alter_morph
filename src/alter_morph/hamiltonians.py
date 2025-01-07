@@ -2,9 +2,9 @@ from koala.lattice import Lattice
 import numpy as np
 
 
-def _hopping_matrix(t1, t2, theta, n=1):
+def _hopping_matrix(t1, t2, theta, theta_offset=0, n=1):
     # val and perus ansatz for the orbital resolved hopping matrix
-
+    theta = theta + theta_offset
     tdiff = t1 - t2
     return -np.array(
         [
@@ -42,7 +42,7 @@ def alt_hamiltonian(
         np.ndarray: The Hamiltonian matrix
     """
 
-    # basis is (up x, down x , up y, down y)
+    # basis is (up x, down x , up y, down y) ###this should be (up x, up y, down x, down y)
 
     # initialize the Hamiltonian
     ham_type = (

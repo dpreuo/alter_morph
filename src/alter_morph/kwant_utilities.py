@@ -284,6 +284,7 @@ def attach_leads_to_cracked(
     contact_vertices: np.ndarray,
     lead_onsite: np.ndarray,
     lead_coupling: np.ndarray,
+    lead_sym = None,
 ):
     """ Given a kwant system with contacts, attach leads to the contacts. The leads 
     are assumed to be square lattices with the same spacing as the contacts. The
@@ -297,6 +298,7 @@ def attach_leads_to_cracked(
         contact_vertices (np.ndarray): The indices of the vertices that in the left and right contacts
         lead_onsite (np.ndarray): The onsite terms for the leads
         lead_coupling (np.ndarray): The coupling terms for the leads
+        lead_sym (np.ndarray): Specify lead symmetries. A matrix which commutes with the lead Hamiltonian (default value is none)
 
     Returns:
         kwant.builder.Builder: The kwant system with leads attached
@@ -330,7 +332,7 @@ def attach_leads_to_cracked(
     left_lead_lattice.offset = (0, left_y_range[0])
     left_lead_symmetry = kwant.TranslationalSymmetry(left_lead_lattice.vec((-1, 0)))
 
-    left_lead = kwant.Builder(left_lead_symmetry)
+    left_lead = kwant.Builder(left_lead_symmetry, conservation_law=lead_sym)
     for i in range(len(left_vertices)):
         left_lead[left_lead_lattice(0, i)] = lead_onsite
 
@@ -338,7 +340,7 @@ def attach_leads_to_cracked(
     right_lead_lattice.offset = (1, right_y_range[0])
     right_lead_symmetry = kwant.TranslationalSymmetry(right_lead_lattice.vec((1, 0)))
 
-    right_lead = kwant.Builder(right_lead_symmetry)
+    right_lead = kwant.Builder(right_lead_symmetry, conservation_law=lead_sym)
     for i in range(len(right_vertices)):
         right_lead[right_lead_lattice(0, i)] = lead_onsite
 
