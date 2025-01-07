@@ -55,6 +55,7 @@ def kwant_altermagnetic_hamiltonian(
     t2: float,
     J: float,
     m_values: np.ndarray,
+    theta_offset = 0.,
     return_lattice=False,
 ):
     """This is the kwant implementation of the function alt_hamiltonian in the
@@ -89,7 +90,7 @@ def kwant_altermagnetic_hamiltonian(
         vector = lattice.edges.vectors[n_edge]
         e0, e1 = lattice.edges.indices[n_edge]
         theta = np.arctan2(vector[0], vector[1])
-        h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta))
+        h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta, theta_offset))
 
         syst[k_lattice(e0), k_lattice(e1)] = h0_term
         # syst[k_lattice(e1), k_lattice(e0)] = h0_term.T.conj()
