@@ -38,6 +38,7 @@ def hartree_fock(
     lattice: Lattice,
     initial_parameters: dict,
     n_steps: int,
+    mixing_proportion=0.3,
     **kwargs,
 ):
 
@@ -48,10 +49,9 @@ def hartree_fock(
     m_values[0] = initial_parameters["initial_m"]
 
     for n in prange:
-
-        m_values[n + 1] = single_hartree_fock_step(
+        m_values[n + 1] = (1 - mixing_proportion) * single_hartree_fock_step(
             lattice, initial_parameters, m_values[n], **kwargs
-        )
+        ) + mixing_proportion * m_values[n]
 
         # check for convergence
         diff = np.linalg.norm(m_values[n + 1] - m_values[n])
@@ -69,7 +69,12 @@ def hartree_fock(
 
 
 def hartree_fock_with_boundary_twisting(
-    lattice: Lattice, initial_parameters: dict, n_steps: int, n_twists: int
+    lattice: Lattice,
+    initial_parameters: dict,
+    n_steps: int,
+    n_twists: int,
+    mixing_proportion=0.3,
+    **kwargs
 ):
     prange = tqdm(range(n_steps))
     skip_counter = 0
@@ -86,9 +91,10 @@ def hartree_fock_with_boundary_twisting(
         averaged_m = np.zeros(lattice.n_vertices)
         for k_val in boundary_phases:
             averaged_m += single_hartree_fock_step(
-                lattice, initial_parameters, m_values[n], k_val
+                lattice, initial_parameters, m_values[n], k_val, **kwargs
             )
-        m_values[n + 1] = averaged_m / len(boundary_phases)
+        m_found = averaged_m / len(boundary_phases)
+        m_values[n + 1] = m_found*(1 - mixing_proportion) + m_values[n]*mixing_proportion
 
         # check for convergence
         diff = np.linalg.norm(m_values[n + 1] - m_values[n])
