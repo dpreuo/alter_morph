@@ -1,3 +1,9 @@
+# Specific to this repo - ie directories we use to test stuff
+perus_cool_stuff/
+testing_notebooks/
+.DS_Store
+results.npy
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -128,10 +134,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Specific to this repo - ie directories we use to test stuff
-perus_cool_stuff/
-testing_notebooks/
-.DS_Store
 
 # VScode settings
 .vscode/

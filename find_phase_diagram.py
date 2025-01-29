@@ -1,52 +1,53 @@
 import numpy as np
 from scipy import linalg as la
-from koala import plotting as pl
 from alter_morph.hamiltonians import (
     alt_hamiltonian,
-    find_m_per_state,
-    find_spin_per_state,
-    spectral_function,
 )
+from multiprocessing import Pool as WorkerPool
 
 from alter_morph.lattice_utilities import alter_lattice_maker
 from alter_morph.mean_field import hartree_fock
-# plotting
-import matplotlib
-import matplotlib.pyplot as plt
 
 
-# generate the lattice and set the initial conditions
+def main():
 
-import koala.graph_utils
+    system_length = 20
+    lattice_type = "voronoi"
+    lattice = alter_lattice_maker(system_length, lattice_type)
 
+    J = 0.5
+    filling = 0.5
+    run_length = 80
 
-system_length = 20
-lattice_type = "voronoi"
-lattice = alter_lattice_maker(system_length, lattice_type)
-# lattice = koala.graph_utils.cut_boundaries(lattice)
+    initial_parameters = {
+        "t1": 1,
+        "t2": 0.5,
+        "J": J,
+        "filling": filling,
+        "initial_m": np.full(lattice.n_vertices, 1),
+        "theta_offset": 0,
+    }
 
+    m_values = hartree_fock(
+        lattice,
+        initial_parameters,
+        run_length,
+        mixing_proportion=0.5,
+        verbose=False,
+    )
 
-t1 = 1  # orbital parallel neighbor hopping
-t2 = 0.5  # orbital perpendicular neighbor hopping
-J_lims = [0, 1]  # Interaction strength
-filling_lims = [0,1]  # filling of the lattice
-initial_m = np.full(lattice.n_vertices, 1)  # initial magnetization
-theta_offset = 0.  # offset of the staggered magnetization
-n_runs = 4
+    hamiltonian = alt_hamiltonian(
+        lattice,
+        initial_parameters["t1"],
+        initial_parameters["t2"],
+        initial_parameters["J"],
+        m_values[-1],
+        theta_offset=initial_parameters["theta_offset"],
+    )
+    energies, states = la.eigh(hamiltonian)
 
-
-for J in np.linspace(*J_lims, n_runs):
-    for filling in np.linspace(*filling_lims, n_runs):
+    stuff_to_save = {
         
 
-        initial_parameters = {
-            "t1": t1,
-            "t2": t2,
-            "J": J,
-            "filling": filling,
-            "initial_m": initial_m,
-            "theta_offset": theta_offset,
-        }
-
-        m_values = hartree_fock(lattice, initial_parameters, 100, mixing_proportion=0.5)
-
+if __name__ == "__main__":
+    main()
