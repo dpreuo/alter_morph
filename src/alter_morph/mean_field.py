@@ -39,10 +39,11 @@ def hartree_fock(
     initial_parameters: dict,
     n_steps: int,
     mixing_proportion=0.3,
+    verbose=True,
     **kwargs,
 ):
 
-    prange = tqdm(range(n_steps))
+    prange = tqdm(range(n_steps)) if verbose else range(n_steps)
     skip_counter = 0
 
     m_values = np.zeros((n_steps + 1, lattice.n_vertices))
@@ -56,7 +57,9 @@ def hartree_fock(
         # check for convergence
         diff = np.linalg.norm(m_values[n + 1] - m_values[n])
         avg_m = np.mean(m_values[n + 1])
-        prange.set_description(f"Avg:{avg_m:.2f}, diff: {diff:.6f}")
+
+        if verbose:
+            prange.set_description(f"Avg:{avg_m:.2f}, diff: {diff:.6f}")
 
         # if the difference is small enough, we can stop
         if diff < 1e-6:
