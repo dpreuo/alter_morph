@@ -26,7 +26,9 @@ config = {
         'cores_per_task': 1,
     }
 }
-        
+
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 lattice = pickle.load(open('voronoi_20.pickle','rb')) #voronoi with system length 20
 
 params = {	'name': ['MF'],
