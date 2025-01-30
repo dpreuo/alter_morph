@@ -27,13 +27,14 @@ config = {
     }
 }
 
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-lattice = pickle.load(open('voronoi_20.pickle','rb')) #voronoi with system length 20
+import sys, os
+lattice_name = 'voronoi_20.pickle'
+
+lattice = pickle.load(open(os.path.dirname(__file__)+'/'+lattice_name,'rb')) #voronoi with system length 20
 
 params = {	'name': ['MF'],
             'J':np.linspace(0,1,11),
-            'n':np.linspace(0,1,11),
+            'n':[0.5],
             't1':[1],
             't2':[0.5],
             'theta_offset':[0],
