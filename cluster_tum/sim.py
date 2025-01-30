@@ -3,30 +3,48 @@
 To run your own simulations, adjust the functions by your liking,
 but keep (or copy & paste) the last 11 lines of this file."""
 
+#needed to import altermorph correctly
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__))+'/src')
 
 import pickle
+import numpy as np
+from alter_morph.mean_field import hartree_fock
 
 
-
-
-def optimizeMF_multiAnsatz(**param):
-    """try the different MF ansaetze and compare them in energy, only safe the one lowest in energy"""
+def find_phase(**param):
+    """
+    finds the converged mvalues for a single point in phase space. Stores results in pickle file
+    """
+    lattice = param['lattice']
     
-    #write a function which finds the phase diagram here
-    #
-    #
-    #
-    #
-    #
-    #
-    #
+    initial_parameters = {
+        "t1": param['t1'],
+        "t2": param['t2'],
+        "J": param['J'],
+        "filling": param['n'],
+        "initial_m": np.full(lattice.n_vertices, 1),
+        "theta_offset": param['theta_offset'],
+    }
+
+    m_values = hartree_fock(
+        param['lattice'],
+        initial_parameters,
+        param['iteration_steps'],
+        mixing_proportion=param['learning_rate'],
+        verbose=False,
+    )
+
+    initial_parameters.pop('initial_m')
+
+    saved_results = dict(
+        hparam = dict(**initial_parameters,m=m_values[-1]),
+        numerical_param = dict(m_values=m_values,iteration_steps=param['iteration_steps'], learning_rate=param['learning_rate'],tol_mdiff=param['tol_mdiff']), 
+    )
     
-
-    pickle.dump(res_list[idx_min], open(name + '.pickle', 'wb'))
-    print(param)
-    return mfs[idx_min], es[idx_min], res_list[idx_min]
-
-
+    pickle.dump(saved_results, open(param['name'] + '.pickle', 'wb'))
+    
 
 
 def generateFilename(name='_',**kwargs):

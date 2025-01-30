@@ -4,13 +4,14 @@ import cluster_jobs
 import copy
 import itertools
 import numpy as np  # only needed if you use np below
+import pickle # only needed if you use np below
 
 config = {
     'jobname': 'altermorph',
     'task': {
         'type': 'PythonFunctionCall',
         'module': 'sim', #specify file from which to import a costly function
-        'function': 'optimizeMF_multiAnsatz' #name of the function which solves system for specific paramteres
+        'function': 'find_phase' #name of the function which solves system for specific paramteres
     },
     'task_parameters': [],  # list of dict containing the **kwargs given to the `function`
     'requirements_slurm': {  # passed on to SLURM
@@ -26,20 +27,19 @@ config = {
     }
 }
         
-        
+lattice = pickle.load(open('voronoi_20.pickle','rb')) #voronoi with system length 20
+
 params = {	'name': ['MF'],
-			'system_length': [20], #(.)**0.5 = #vertices
-            'J':np.linspace(0,2,21),
-            'filling':np.linspace(0,1,11),
+            'J':np.linspace(0,1,11),
+            'n':np.linspace(0,1,11),
             't1':[1],
             't2':[0.5],
             'theta_offset':[0],
-            'lattice':[],#INCLUDE the voronoi lattice here as parameter
+            'lattice':[lattice],#INCLUDE the voronoi lattice here as parameter
             #numerical parameters
-            'tol':[1e-5],
-            'mf0':[[0.2,0.2,3]],
             'learning_rate':[0.5],
-            'iteration_steps': [100]
+            'iteration_steps': [200],
+            'tol_mdiff':[1e-3],
             }
             
 ## for all possible list values

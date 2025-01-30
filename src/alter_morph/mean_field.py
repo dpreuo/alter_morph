@@ -38,8 +38,9 @@ def hartree_fock(
     lattice: Lattice,
     initial_parameters: dict,
     n_steps: int,
-    mixing_proportion=0.3,
+    mixing_proportion=0.4,
     verbose=True,
+    tol_mdiff=1e-6,
     **kwargs,
 ):
 
@@ -62,7 +63,7 @@ def hartree_fock(
             prange.set_description(f"Avg:{avg_m:.2f}, diff: {diff:.6f}")
 
         # if the difference is small enough, we can stop
-        if diff < 1e-6:
+        if diff < tol_mdiff:
             skip_counter += 1
             if skip_counter >= 3:
                 m_values = m_values[: n + 1]
