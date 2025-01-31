@@ -17,7 +17,7 @@ set -e  # abort whole script if any command fails
 #module load python/3.7
 # conda activate tenpy
 export PATH="/mount/packs/intelpython36/bin:$PATH"
-source activate kwantEnv
+source activate env-koala
 {environment_setup}
 
 echo "Running task {task_id} specified in {config_file} on $HOSTNAME at $(date)"
