@@ -3,6 +3,7 @@ perus_cool_stuff/
 testing_notebooks/
 .DS_Store
 results.npy
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
