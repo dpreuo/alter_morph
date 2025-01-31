@@ -23,7 +23,7 @@ def find_phase(**param):
         "t1": param['t1'],
         "t2": param['t2'],
         "J": param['J'],
-        "filling": param['n'],
+        "filling": param['filling'],
         "initial_m": np.full(lattice.n_vertices, 1),
         "theta_offset": param['theta_offset'],
     }
