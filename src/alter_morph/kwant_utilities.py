@@ -162,7 +162,7 @@ def lattice_ham_to_kwant(lattice: Lattice, hamiltonian: np.ndarray):
 
     return kwant_lattice, kwant_syst
 
-def crack_hamiltonian_for_contacts_kwant(lattice: Lattice, hamiltonian: np.ndarray):
+def crack_hamiltonian_for_contacts_kwant(lattice: Lattice, hamiltonian: np.ndarray, cross_edges = False):
     """Given a lattice with periodic x and open y, we crack the lattice upen and add
     contacts, doubling every site on an edge crossing bond and placing the copy on the
     other side as a contact. Takes the Hamiltonian and copies the relevant edges so
@@ -171,6 +171,7 @@ def crack_hamiltonian_for_contacts_kwant(lattice: Lattice, hamiltonian: np.ndarr
     Args:
         lattice (Lattice): The lattice
         hamiltonian (np.ndarray): The hamiltonian
+        cross_edges (bool, optional): Whether to add edges that cross the contacts. Defaults to False.
 
     Returns:
         Lattice: The new lattice with contacts
@@ -191,7 +192,7 @@ def crack_hamiltonian_for_contacts_kwant(lattice: Lattice, hamiltonian: np.ndarr
     contact_lattice, new_vertices, original_vertices = add_contacts(
         lattice,
         return_added_indices=True,
-        # cross_edges=True,
+        cross_edges=cross_edges,
         make_uniform=True,
     )
 
@@ -328,44 +329,41 @@ def attach_leads_to_cracked(
     right_a = (right_y_range[1] - right_y_range[0]) / (len(right_vertices) - 1)
     # right_shift = right_y_range[0] / right_a
 
-    # create leads
-    left_lead_lattice = kwant.lattice.square(a=left_a, norbs=4)
-    left_lead_lattice.offset = (0, left_y_range[0])
-    left_lead_symmetry = kwant.TranslationalSymmetry(left_lead_lattice.vec((-1, 0)))
 
+
+    # create left lead
+    left_lead_lattice = kwant.lattice.Monatomic(((left_a,0), (0,left_a)), norbs=n_orbitals, name = 'left_lead', offset = (0, left_y_range[0]))
+    left_lead_symmetry = kwant.TranslationalSymmetry(left_lead_lattice.vec((-1, 0)))
+    
     left_lead = kwant.Builder(left_lead_symmetry, conservation_law=lead_sym)
     for i in range(len(left_vertices)):
         left_lead[left_lead_lattice(0, i)] = lead_onsite
-
-    right_lead_lattice = kwant.lattice.square(a=right_a, norbs=4)
-    right_lead_lattice.offset = (1, right_y_range[0])
-    right_lead_symmetry = kwant.TranslationalSymmetry(right_lead_lattice.vec((1, 0)))
-
-    right_lead = kwant.Builder(right_lead_symmetry, conservation_law=lead_sym)
-    for i in range(len(right_vertices)):
-        right_lead[right_lead_lattice(0, i)] = lead_onsite
-
     left_lead[left_lead_lattice.neighbors()] = lead_coupling
-    right_lead[right_lead_lattice.neighbors()] = lead_coupling
-
     for i in range(len(left_vertices)):
         kwant_system[(left_lead_lattice(0, i))] = lead_onsite
         kwant_system[left_lead_lattice(0, i), kwant_lattice(left_vertices[i])] = (
             lead_coupling
         )
     kwant_system[left_lead_lattice.neighbors()] = lead_coupling
+    kwant_system.attach_lead(left_lead)
 
+    # # create right lead
+    right_lead_lattice = kwant.lattice.Monatomic(((right_a,0), (0,right_a)), norbs=n_orbitals, name = 'right_lead', offset = (1, right_y_range[0]))
+    right_lead_symmetry = kwant.TranslationalSymmetry(right_lead_lattice.vec((1, 0)))
+    right_lead = kwant.Builder(right_lead_symmetry, conservation_law=lead_sym)
+    for i in range(len(right_vertices)):
+        right_lead[right_lead_lattice(0, i)] = lead_onsite
+    right_lead[right_lead_lattice.neighbors()] = lead_coupling
     for i in range(len(right_vertices)):
         kwant_system[right_lead_lattice(0, i)] = lead_onsite
         kwant_system[right_lead_lattice(0, i), kwant_lattice(right_vertices[i])] = (
             lead_coupling
         )
     kwant_system[right_lead_lattice.neighbors()] = lead_coupling
-
-    kwant_system.attach_lead(left_lead)
     kwant_system.attach_lead(right_lead)
 
-    kwant_system.eradicate_dangling()
+
+    # kwant_system.eradicate_dangling()
 
     return kwant_system, left_lead, right_lead
 
