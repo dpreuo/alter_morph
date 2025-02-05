@@ -288,7 +288,114 @@ def kubo_conductivity(lattice, hamiltonian, energies, states, fermi_level, beta,
     return -np.array([[sigma_xx, sigma_xy], [sigma_yx, sigma_yy]]) * 2j
 
 
+
+def spectral_function_reshape(
+    lattice: Lattice,
+    energies: np.ndarray,
+    states: np.ndarray,
+    omega: float,
+    eta=1e-6,
+    local_operator=np.array([1, 1, 1, 1]),
+    n_k=None,
+):
+    """
+    Calculates the spectral function for a given set of energies
+    and states, projected onto a local set of spin and orbital states.
+
+    This method is based on reshaping in orbital and real subspace and should in principle be very fast. It is however very slow.
+
+    Args:
+        lattice (Lattice): The lattice
+        energies (np.ndarray): The eigenvalues of the Hamiltonian
+        states (np.ndarray): The eigenvectors of the Hamiltonian
+        omega (float): The energy to calculate the spectral function at
+        eta (float, optional): The broadening parameter for the spectral function. Defaults to 1e-6.
+        local_operator (np.ndarray, optional): An operator living in the orbital space. Defaults to np.array([1, 1, 1, 1]).
+        n_k (int, optional): The number of k points to sample, if None will be sqrt(n_vertices). Defaults to None.
+
+    Returns:
+        np.ndarray: The spectral function
+    """
+
+    if n_k is None:
+        n_k = np.sqrt(lattice.n_vertices).astype(int)
+        # print(n_k)
+
+    positions = lattice.vertices.positions
+    n_vertices = lattice.n_vertices
+    n_orbitals = len(local_projector)
+
+    ########################
+    #approach based on reshaping
+    states = states.reshape(n_vertices,n_orbitals,n_vertices*n_orbitals) #.shape=(n_vertices,n_orbitals,n_vertices*n_orbitals)
+
+    k_vals = np.arange(-n_k // 2, n_k // 2) * 2 * np.pi
+    ks = np.array(np.meshgrid(k_vals, k_vals)) #.shape=(2,ky,kx)
+
+    phase = np.exp(1j * np.einsum('ryx,nr->yxn',ks,positions)) #.shape=(ky,kx,n_vertices)
+    k_states = np.einsum('yxn,noh->yxoh',phase,states) #.shape=(ky,kx,n_orbitals,n_vertices*n_orbitals)
+    k_densities = np.abs(k_states)**2 #.shape=(ky,kx,n_orbitals,n_vertices*n_orbitals)
+
+    Ak = eta/np.pi / ((energies - omega)**2 + eta**2) / n_vertices / n_orbitals #.shape=(n_vertices*n_orbitals)
+    Ako = np.einsum('yxoh,h->yxo',k_densities,Ak) #.shape=(ky,kx,n_orbitals)
+    spectral_function = np.einsum('yxo,o->yx',Ako,local_projector) #.shape=(ky,kx)
+    
+    return spectral_function
+
+
+
 def spectral_function(
+    lattice: Lattice,
+    energies: np.ndarray,
+    states: np.ndarray,
+    omega: float,
+    eta=1e-6,
+    local_operator=np.array([1, 1, 1, 1]),
+    n_k=None,
+):
+    """
+    Calculates the spectral function for a given set of energies
+    and states, projected onto a local set of spin and orbital states
+
+    Args:
+        lattice (Lattice): The lattice
+        energies (np.ndarray): The eigenvalues of the Hamiltonian
+        states (np.ndarray): The eigenvectors of the Hamiltonian
+        omega (float): The energy to calculate the spectral function at
+        eta (float, optional): The broadening parameter for the spectral function. Defaults to 1e-6.
+        local_operator (np.ndarray, optional): An operator living in the orbital space. Defaults to np.array([1, 1, 1, 1]).
+        n_k (int, optional): The number of k points to sample, if None will be sqrt(n_vertices). Defaults to None.
+
+    Returns:
+        np.ndarray: The spectral function
+    """
+
+    if n_k is None:
+        n_k = np.sqrt(lattice.n_vertices).astype(int)
+        # print(n_k)
+
+    positions = lattice.vertices.positions
+    n_vertices = lattice.n_vertices
+    n_orbitals = len(local_operator)
+    #######################
+    k_vals = np.arange(-n_k // 2, n_k // 2) * 2 * np.pi
+    ks = np.array(np.meshgrid(k_vals, k_vals)) #.shape=(2,ky,kx)
+
+    Ak = eta/np.pi / ((energies - omega)**2 + eta**2) / n_vertices / n_orbitals #.shape=(n_vertices*n_orbitals)
+    phase = np.exp(1j * np.einsum('ryx,nr->yxn',ks,positions)) #.shape=(ky,kx,n_vertices)
+    
+    #1D kron of last axis
+    kronO = np.einsum('ayxn,ao->yxno',phase[np.newaxis],local_operator[np.newaxis]).reshape(*phase.shape[:-1],phase.shape[-1]*local_operator.shape[-1])
+    kron1 = np.einsum('ayxn,ao->yxno',phase[np.newaxis],np.ones(n_orbitals)[np.newaxis]).reshape(*phase.shape[:-1],phase.shape[-1]*local_operator.shape[-1])
+
+    #direct summation
+    #print(np.einsum_path('b,cb,xyc,yxa,ab->yx',Ak,states.conj(),kron1.conj(),kronO,states,optimize='optimal'))
+    spectral_function = np.einsum('b,cb,yxc,yxa,ab->yx',Ak,states.conj(),kron1.conj(),kronO,states,optimize=['einsum_path',(0, 1), (2, 3), (0, 2), (0, 1)])
+
+    return np.real(spectral_function) #elements should be real anyways
+
+
+def spectral_function_old(
     lattice: Lattice,
     energies: np.ndarray,
     states: np.ndarray,
@@ -300,6 +407,8 @@ def spectral_function(
     """
     Calculates the spectral function for a given set of energies
     and states, projected onto a local set of spin and orbital states
+
+    This method involves a direct summation over the k points and is very slow.
 
     Args:
         lattice (Lattice): The lattice

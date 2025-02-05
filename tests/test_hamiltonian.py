@@ -48,8 +48,8 @@ def test_hamiltonian():
 
     omega = -3
     specs = [
-        spectral_function(vor_lat, e, v, omega, local_projector=np.array([1, 0, 0, 0])),
-        spectral_function(vor_lat, e, v, omega, local_projector=np.array([0, 1, 0, 0])),
-        spectral_function(vor_lat, e, v, omega, local_projector=np.array([0, 0, 1, 0])),
-        spectral_function(vor_lat, e, v, omega, local_projector=np.array([0, 0, 0, 1])),
+        spectral_function(vor_lat, e, v, omega, local_operator=np.array([1, 0, 0, 0])),
+        spectral_function(vor_lat, e, v, omega, local_operator=np.array([0, 1, 0, 0])),
+        spectral_function(vor_lat, e, v, omega, local_operator=np.array([0, 0, 1, 0])),
+        spectral_function(vor_lat, e, v, omega, local_operator=np.array([0, 0, 0, 1])),
     ]
