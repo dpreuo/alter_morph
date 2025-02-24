@@ -2,7 +2,7 @@ from koala.lattice import Lattice
 import numpy as np
 
 
-def _hopping_matrix(t1, t2, theta, theta_offset=0., n=1):
+def _hopping_matrix(t1, t2, theta, theta_offset=0.0, n=1):
     # val and perus ansatz for the orbital resolved hopping matrix
     theta = theta + theta_offset
     tdiff = t1 - t2
@@ -26,7 +26,7 @@ def alt_hamiltonian(
     t2: float,
     J: float,
     m_values: np.ndarray,
-    theta_offset=0.,
+    theta_offset=0.0,
     boundary_phase=None,
 ):
     """Generates an altermagnetic Hamiltonian for a given lattice
@@ -288,7 +288,6 @@ def kubo_conductivity(lattice, hamiltonian, energies, states, fermi_level, beta,
     return -np.array([[sigma_xx, sigma_xy], [sigma_yx, sigma_yy]]) * 2j
 
 
-
 def spectral_function_reshape(
     lattice: Lattice,
     energies: np.ndarray,
@@ -323,25 +322,34 @@ def spectral_function_reshape(
 
     positions = lattice.vertices.positions
     n_vertices = lattice.n_vertices
-    n_orbitals = len(local_projector)
+    n_orbitals = len(local_operator)
 
     ########################
-    #approach based on reshaping
-    states = states.reshape(n_vertices,n_orbitals,n_vertices*n_orbitals) #.shape=(n_vertices,n_orbitals,n_vertices*n_orbitals)
+    # approach based on reshaping
+    states = states.reshape(
+        n_vertices, n_orbitals, n_vertices * n_orbitals
+    )  # .shape=(n_vertices,n_orbitals,n_vertices*n_orbitals)
 
     k_vals = np.arange(-n_k // 2, n_k // 2) * 2 * np.pi
-    ks = np.array(np.meshgrid(k_vals, k_vals)) #.shape=(2,ky,kx)
+    ks = np.array(np.meshgrid(k_vals, k_vals))  # .shape=(2,ky,kx)
 
-    phase = np.exp(1j * np.einsum('ryx,nr->yxn',ks,positions)) #.shape=(ky,kx,n_vertices)
-    k_states = np.einsum('yxn,noh->yxoh',phase,states) #.shape=(ky,kx,n_orbitals,n_vertices*n_orbitals)
-    k_densities = np.abs(k_states)**2 #.shape=(ky,kx,n_orbitals,n_vertices*n_orbitals)
+    phase = np.exp(
+        1j * np.einsum("ryx,nr->yxn", ks, positions)
+    )  # .shape=(ky,kx,n_vertices)
+    k_states = np.einsum(
+        "yxn,noh->yxoh", phase, states
+    )  # .shape=(ky,kx,n_orbitals,n_vertices*n_orbitals)
+    k_densities = (
+        np.abs(k_states) ** 2
+    )  # .shape=(ky,kx,n_orbitals,n_vertices*n_orbitals)
 
-    Ak = eta/np.pi / ((energies - omega)**2 + eta**2) / n_vertices / n_orbitals #.shape=(n_vertices*n_orbitals)
-    Ako = np.einsum('yxoh,h->yxo',k_densities,Ak) #.shape=(ky,kx,n_orbitals)
-    spectral_function = np.einsum('yxo,o->yx',Ako,local_projector) #.shape=(ky,kx)
-    
+    Ak = (
+        eta / np.pi / ((energies - omega) ** 2 + eta**2) / n_vertices / n_orbitals
+    )  # .shape=(n_vertices*n_orbitals)
+    Ako = np.einsum("yxoh,h->yxo", k_densities, Ak)  # .shape=(ky,kx,n_orbitals)
+    spectral_function = np.einsum("yxo,o->yx", Ako, local_operator)  # .shape=(ky,kx)
+
     return spectral_function
-
 
 
 def spectral_function(
@@ -379,20 +387,36 @@ def spectral_function(
     n_orbitals = len(local_operator)
     #######################
     k_vals = np.arange(-n_k // 2, n_k // 2) * 2 * np.pi
-    ks = np.array(np.meshgrid(k_vals, k_vals)) #.shape=(2,ky,kx)
+    ks = np.array(np.meshgrid(k_vals, k_vals))  # .shape=(2,ky,kx)
 
-    Ak = eta/np.pi / ((energies - omega)**2 + eta**2) / n_vertices / n_orbitals #.shape=(n_vertices*n_orbitals)
-    phase = np.exp(1j * np.einsum('ryx,nr->yxn',ks,positions)) #.shape=(ky,kx,n_vertices)
-    
-    #1D kron of last axis
-    kronO = np.einsum('ayxn,ao->yxno',phase[np.newaxis],local_operator[np.newaxis]).reshape(*phase.shape[:-1],phase.shape[-1]*local_operator.shape[-1])
-    kron1 = np.einsum('ayxn,ao->yxno',phase[np.newaxis],np.ones(n_orbitals)[np.newaxis]).reshape(*phase.shape[:-1],phase.shape[-1]*local_operator.shape[-1])
+    Ak = (
+        eta / np.pi / ((energies - omega) ** 2 + eta**2) / n_vertices / n_orbitals
+    )  # .shape=(n_vertices*n_orbitals)
+    phase = np.exp(
+        1j * np.einsum("ryx,nr->yxn", ks, positions)
+    )  # .shape=(ky,kx,n_vertices)
 
-    #direct summation
-    #print(np.einsum_path('b,cb,xyc,yxa,ab->yx',Ak,states.conj(),kron1.conj(),kronO,states,optimize='optimal'))
-    spectral_function = np.einsum('b,cb,yxc,yxa,ab->yx',Ak,states.conj(),kron1.conj(),kronO,states,optimize=['einsum_path',(0, 1), (2, 3), (0, 2), (0, 1)])
+    # 1D kron of last axis
+    kronO = np.einsum(
+        "ayxn,ao->yxno", phase[np.newaxis], local_operator[np.newaxis]
+    ).reshape(*phase.shape[:-1], phase.shape[-1] * local_operator.shape[-1])
+    kron1 = np.einsum(
+        "ayxn,ao->yxno", phase[np.newaxis], np.ones(n_orbitals)[np.newaxis]
+    ).reshape(*phase.shape[:-1], phase.shape[-1] * local_operator.shape[-1])
 
-    return np.real(spectral_function) #elements should be real anyways
+    # direct summation
+    # print(np.einsum_path('b,cb,xyc,yxa,ab->yx',Ak,states.conj(),kron1.conj(),kronO,states,optimize='optimal'))
+    spectral_function = np.einsum(
+        "b,cb,yxc,yxa,ab->yx",
+        Ak,
+        states.conj(),
+        kron1.conj(),
+        kronO,
+        states,
+        optimize=["einsum_path", (0, 1), (2, 3), (0, 2), (0, 1)],
+    )
+
+    return np.real(spectral_function)  # elements should be real anyways
 
 
 def spectral_function_old(

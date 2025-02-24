@@ -5,6 +5,7 @@ from koala.pointsets import uniform
 from koala import example_graphs as eg
 import numpy as np
 
+
 # TODO: There is a bug here when you have a vertex that has all edges that cross the boundaries
 def add_contacts(
     lattice: Lattice,
@@ -13,19 +14,19 @@ def add_contacts(
     make_uniform=False,
     return_added_indices=False,
 ):
-    """Add contacts to the lattice in the x and y directions. The new vertices 
+    """Add contacts to the lattice in the x and y directions. The new vertices
     are added to the end of the lattice in the
 
     Args:
-        lattice (Lattice): Lattice to add contacts to. Must have periodic 
+        lattice (Lattice): Lattice to add contacts to. Must have periodic
             boundary conditions in the chosen directions.
-        x_y_contacts (list, optional): List of booleans indicating whether 
+        x_y_contacts (list, optional): List of booleans indicating whether
             to add contacts in the x and y directions. Defaults to [True, False].
-        cross_edges (bool, optional): Whether to add perpendicular edges to 
+        cross_edges (bool, optional): Whether to add perpendicular edges to
             the new vertices. Defaults to False.
-        make_uniform (bool, optional): Whether to evenly space the new vertices. 
+        make_uniform (bool, optional): Whether to evenly space the new vertices.
             Defaults to False.
-        return_added_indices (bool, optional): Whether to return the indices 
+        return_added_indices (bool, optional): Whether to return the indices
             of the added vertices. Defaults to False.
 
     Returns:
@@ -132,7 +133,9 @@ def add_contacts(
             len(vertices) - len(new_ending_vertex_positions), len(vertices)
         )[new_ending_order]
 
-        original_indices_out.append((starting_vertices[new_starting_order], ending_vertices[new_ending_order]))
+        original_indices_out.append(
+            (starting_vertices[new_starting_order], ending_vertices[new_ending_order])
+        )
         added_indices_out.append((starting_indices, ending_indices))
 
         # add perpendicular to the new vertices if cross_edges is True
@@ -181,6 +184,9 @@ def alter_lattice_maker(length: int, type: str) -> Lattice:
     if type == "square":
         rows = np.round(np.sqrt(n_vertices)).astype(int)
         lattice = eg.square_lattice(rows, rows)
+    elif type == "honeycomb":
+        rows = np.round(np.sqrt(n_vertices / 2)).astype(int)
+        lattice = eg.honeycomb_lattice(rows)
     elif type == "voronoi":
         vor_lat = generate_lattice(uniform(n_vertices // 2))
         lattice = gu.lloyd_relaxation(vor_lat, 10)

@@ -6,7 +6,7 @@ from koala.lattice import Lattice
 from koala.graph_color import color_lattice
 from koala import plotting as pl
 from tqdm import tqdm
-from alter_morph.lattice_utilities import add_contacts
+from alter_morph.lattice_utilities import add_contacts, alter_lattice_maker
 from scipy import linalg as la
 
 from alter_morph.hamiltonians import (
@@ -21,6 +21,15 @@ from alter_morph.hamiltonians import (
 from copy import copy
 import numpy as np
 import matplotlib.pyplot as plt
+
+def test_generate_lattice():
+    for type in [
+        'square',
+        'honeycomb',
+        'voronoi',
+        'amorphous-4',
+    ]:
+        alter_lattice_maker(5,type)
 
 
 def test_add_contacts():
