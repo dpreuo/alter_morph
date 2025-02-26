@@ -18,13 +18,16 @@ def test_crack_hamiltonian_leads():
     t1 = 1  # orbital parallel neighbor hopping
     t2 = 0.5  # orbital perpendicular neighbor hopping
     J = 0.4  # Interaction strength
+    U = 0.4  
+
     initial_m = np.full(lattice.n_vertices, 1)  # initial magnetization
+    initial_n = np.full(lattice.n_vertices, 2)  # initial charge density
 
     lead_onsite = np.diag([1, 1, 1, 1])  # lead onsite
     lead_coupling= np.diag([1, 1, 1, 1])  # lead coupling
     lead_symmetry = np.diag([-1, -1, 1, 1])  # lead symmetry
 
-    hamiltonian = alt_hamiltonian(lattice, t1, t2, J, initial_m)
+    hamiltonian = alt_hamiltonian(lattice, t1, t2, J, U, initial_m, initial_n)
 
     contact_lattice, k_lattice, k_system, contact_vertices = (
         crack_hamiltonian_for_contacts_kwant(lattice, hamiltonian)
@@ -41,11 +44,13 @@ def test_kwant_altermagnetic_hamiltonian():
     t1 = 1  # orbital parallel neighbor hopping
     t2 = 0.5  # orbital perpendicular neighbor hopping
     J = 0.4  # Interaction strength
-    initial_m = np.full(lattice.n_vertices, 1)  # initial magnetization
+    U = 0.4  
+    initial_m = np.full(lattice.n_vertices, 1)
+    initial_n = np.full(lattice.n_vertices, 2)  
     theta = 0.572
 
-    hamiltonian = alt_hamiltonian(lattice, t1, t2, J, initial_m, theta)
-    k_hamiltonian = kwant_altermagnetic_hamiltonian(lattice, t1, t2, J, initial_m, theta).finalized()
+    hamiltonian = alt_hamiltonian(lattice, t1, t2, J,U, initial_m, initial_n,theta)
+    k_hamiltonian = kwant_altermagnetic_hamiltonian(lattice, t1, t2, J,U, initial_m, initial_n, theta).finalized()
 
     assert np.allclose(hamiltonian, k_hamiltonian.hamiltonian_submatrix())
 
@@ -56,10 +61,13 @@ def test_lattice_ham_to_kwant():
     t1 = 1  # orbital parallel neighbor hopping
     t2 = 0.5  # orbital perpendicular neighbor hopping
     J = 0.4  # Interaction strength
+    U = 0.4
     initial_m = np.full(lattice.n_vertices, 1)  # initial magnetization
+    initial_n = np.full(lattice.n_vertices, 2)  # initial charge
+
     theta = 0.572
 
-    hamiltonian = alt_hamiltonian(lattice, t1, t2, J, initial_m, theta)
+    hamiltonian = alt_hamiltonian(lattice, t1, t2, J ,U, initial_m, initial_n, theta)
     k_hamiltonian = lattice_ham_to_kwant(lattice, hamiltonian)[1].finalized()
 
     assert np.allclose(hamiltonian, k_hamiltonian.hamiltonian_submatrix())

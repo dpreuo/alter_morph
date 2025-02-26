@@ -25,9 +25,12 @@ def alt_hamiltonian(
     t1: float,
     t2: float,
     J: float,
+    U: float,
     m_values: np.ndarray,
+    n_values: np.ndarray,
     theta_offset=0.0,
     boundary_phase=None,
+    add_energy_shift=False,
 ):
     """Generates an altermagnetic Hamiltonian for a given lattice
 
@@ -77,15 +80,30 @@ def alt_hamiltonian(
     for n in range(lattice.n_vertices):
         vertex_neighbours = lattice.vertices.adjacent_vertices[n]
         neighbour_magnetisations = m_values[vertex_neighbours]
+        neighbour_densities = n_values[vertex_neighbours]
+
         total_magnetisation = np.sum(neighbour_magnetisations)
+        total_density = np.sum(neighbour_densities)
+
         ham[4 * n : 4 * n + 4, 4 * n : 4 * n + 4] += (
-            J * total_magnetisation * np.diag(np.array([-1, 1, 1, -1]))
+            np.diag(J * total_magnetisation *np.array([-1, 1, 1, -1])
+                     + U * total_density)
         )
+    
+    if add_energy_shift:
+        edges = lattice.edges.indices
+        mag_prod = m_values[edges[:, 0]] * m_values[edges[:, 1]]
+        n_prod = n_values[edges[:, 0]] * n_values[edges[:, 1]]
+        energy_mean_field_shift = np.sum(mag_prod) * J - np.sum(n_prod) * U
+        energy_mean_field_shift = energy_mean_field_shift / (lattice.n_vertices*4)
+        # print(energy_mean_field_shift)
+        diag_norm = np.eye(4 * lattice.n_vertices)
+        ham += energy_mean_field_shift * diag_norm
 
     return ham
 
 
-def find_m_values(states, filling):
+def find_m_and_n_values(states, filling):
     """Given a set of eigenvectors, calculates the mean field values for the altermagnetic magnetic moments
 
     Args:
@@ -97,19 +115,26 @@ def find_m_values(states, filling):
     """
 
     fermi_occupation = np.linspace(0, 1, len(states)) <= filling
-    # projector = states * fermi_occupation @ states.T.conj()
     local_densities = np.sum(states * states.conj() * fermi_occupation, axis=1)
 
     m_legend = np.tile(np.array([1, -1, -1, 1]), len(states) // 4)
     m_values = local_densities * m_legend
     m_values = m_values.reshape(-1, 4).sum(axis=-1)
 
+    n_values = local_densities.reshape(-1, 4).sum(axis=-1)
+
     # check for complex values - this should not happen
     if not np.allclose(m_values.imag, 0):
         raise ValueError(
             "Magnetization values are complex - somewhere, somehow you fucked it up"
         )
-    return m_values.real
+    elif not np.allclose(n_values.imag, 0):
+        raise ValueError(
+            "Density values are complex - somewhere, somehow you fucked it up"
+        )
+    
+
+    return m_values.real, n_values.real
 
 
 def find_m_per_state(v: np.ndarray):

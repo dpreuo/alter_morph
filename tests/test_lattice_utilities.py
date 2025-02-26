@@ -12,7 +12,6 @@ from scipy import linalg as la
 from alter_morph.hamiltonians import (
     alt_hamiltonian,
     find_m_per_state,
-    find_m_values,
     find_spin_per_state,
     fermi_probability,
     spectral_function,

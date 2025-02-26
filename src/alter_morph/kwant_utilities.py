@@ -54,8 +54,10 @@ def kwant_altermagnetic_hamiltonian(
     t1: float,
     t2: float,
     J: float,
+    U: float,
     m_values: np.ndarray,
-    theta_offset = 0.,
+    n_values: np.ndarray,
+    theta_offset=0.0,
     return_lattice=False,
 ):
     """This is the kwant implementation of the function alt_hamiltonian in the
@@ -84,7 +86,14 @@ def kwant_altermagnetic_hamiltonian(
         vertex_neighbours = lattice.vertices.adjacent_vertices[n]
         neighbour_magnetisations = m_values[vertex_neighbours]
         total_magnetisation = np.sum(neighbour_magnetisations)
-        syst[k_lattice(n)] = J * total_magnetisation * np.diag(np.array([-1, 1, 1, -1]))
+
+        neighbour_densities = n_values[vertex_neighbours]
+        total_density = np.sum(neighbour_densities)
+
+        syst[k_lattice(n)] = (
+            J * total_magnetisation * np.diag(np.array([-1, 1, 1, -1]))
+            + U * total_density * np.eye(n_orbs)
+        )
 
     for n_edge in range(lattice.n_edges):
         vector = lattice.edges.vectors[n_edge]
@@ -162,7 +171,10 @@ def lattice_ham_to_kwant(lattice: Lattice, hamiltonian: np.ndarray):
 
     return kwant_lattice, kwant_syst
 
-def crack_hamiltonian_for_contacts_kwant(lattice: Lattice, hamiltonian: np.ndarray, cross_edges = False):
+
+def crack_hamiltonian_for_contacts_kwant(
+    lattice: Lattice, hamiltonian: np.ndarray, cross_edges=False
+):
     """Given a lattice with periodic x and open y, we crack the lattice upen and add
     contacts, doubling every site on an edge crossing bond and placing the copy on the
     other side as a contact. Takes the Hamiltonian and copies the relevant edges so
@@ -279,6 +291,7 @@ def crack_hamiltonian_for_contacts_kwant(lattice: Lattice, hamiltonian: np.ndarr
 
     return contact_lattice, kwant_lattice, kwant_system, new_vertices[0]
 
+
 def attach_leads_to_cracked(
     contact_lattice: Lattice,
     kwant_lattice: Amorphous,
@@ -286,9 +299,9 @@ def attach_leads_to_cracked(
     contact_vertices: np.ndarray,
     lead_onsite: np.ndarray,
     lead_coupling: np.ndarray,
-    lead_sym = None,
+    lead_sym=None,
 ):
-    """ Given a kwant system with contacts, attach leads to the contacts. The leads 
+    """Given a kwant system with contacts, attach leads to the contacts. The leads
     are assumed to be square lattices with the same spacing as the contacts. The
     contacts are assumed to be on the left and right of the system. The leads are
     created with specified onsite and coupling terms.
@@ -329,12 +342,15 @@ def attach_leads_to_cracked(
     right_a = (right_y_range[1] - right_y_range[0]) / (len(right_vertices) - 1)
     # right_shift = right_y_range[0] / right_a
 
-
-
     # create left lead
-    left_lead_lattice = kwant.lattice.Monatomic(((left_a,0), (0,left_a)), norbs=n_orbitals, name = 'left_lead', offset = (0, left_y_range[0]))
+    left_lead_lattice = kwant.lattice.Monatomic(
+        ((left_a, 0), (0, left_a)),
+        norbs=n_orbitals,
+        name="left_lead",
+        offset=(0, left_y_range[0]),
+    )
     left_lead_symmetry = kwant.TranslationalSymmetry(left_lead_lattice.vec((-1, 0)))
-    
+
     left_lead = kwant.Builder(left_lead_symmetry, conservation_law=lead_sym)
     for i in range(len(left_vertices)):
         left_lead[left_lead_lattice(0, i)] = lead_onsite
@@ -348,7 +364,12 @@ def attach_leads_to_cracked(
     kwant_system.attach_lead(left_lead)
 
     # # create right lead
-    right_lead_lattice = kwant.lattice.Monatomic(((right_a,0), (0,right_a)), norbs=n_orbitals, name = 'right_lead', offset = (1, right_y_range[0]))
+    right_lead_lattice = kwant.lattice.Monatomic(
+        ((right_a, 0), (0, right_a)),
+        norbs=n_orbitals,
+        name="right_lead",
+        offset=(1, right_y_range[0]),
+    )
     right_lead_symmetry = kwant.TranslationalSymmetry(right_lead_lattice.vec((1, 0)))
     right_lead = kwant.Builder(right_lead_symmetry, conservation_law=lead_sym)
     for i in range(len(right_vertices)):
@@ -362,8 +383,6 @@ def attach_leads_to_cracked(
     kwant_system[right_lead_lattice.neighbors()] = lead_coupling
     kwant_system.attach_lead(right_lead)
 
-
     # kwant_system.eradicate_dangling()
 
     return kwant_system, left_lead, right_lead
-

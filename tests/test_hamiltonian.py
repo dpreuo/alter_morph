@@ -15,7 +15,7 @@ from copy import copy
 from alter_morph.hamiltonians import (
     alt_hamiltonian,
     find_m_per_state,
-    find_m_values,
+    find_m_and_n_values,
     find_spin_per_state,
     spectral_function,
 )
@@ -30,14 +30,16 @@ def test_hamiltonian():
     t1 = 1
     t2 = 0.3
     J = 0.4
+    U = 0.4
     filling = 0.5
     initial_m = np.zeros(vor_lat.n_vertices) + 1.2
+    initial_n = np.zeros(vor_lat.n_vertices) + filling*4
     
-    ham = alt_hamiltonian(vor_lat, t1, t2, J, initial_m)
+    ham = alt_hamiltonian(vor_lat, t1, t2, J, U, initial_m, initial_n)
     assert( ham.conj().T == ham).all() # check if the hamiltonian is hermitian
 
     e, v = np.linalg.eigh(ham)
-    m_values = find_m_values(v, filling)
+    m_values, n_values = find_m_and_n_values(v, filling)
     average_m_per_state = find_m_per_state(v)
     average_spin_per_state = find_spin_per_state(v)
 
