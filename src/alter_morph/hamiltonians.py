@@ -379,6 +379,8 @@ def spectral_function(
     n_orbitals = len(local_operator)
     #######################
     k_vals = np.arange(-n_k // 2, n_k // 2) * 2 * np.pi
+    k_vals = np.linspace(-1,1,n_k) * np.pi * np.sqrt(lattice.n_vertices)
+
     ks = np.array(np.meshgrid(k_vals, k_vals)) #.shape=(2,ky,kx)
 
     Ak = eta/np.pi / ((energies - omega)**2 + eta**2) / n_vertices / n_orbitals #.shape=(n_vertices*n_orbitals)
@@ -402,6 +404,7 @@ def spectral_function_old(
     omega: float,
     eta=1e-6,
     local_projector=np.array([1, 1, 0, 0]),
+    local_operator=np.array([1, 1, 0, 0]),
     n_k=None,
 ):
     """
@@ -417,12 +420,15 @@ def spectral_function_old(
         omega (float): The energy to calculate the spectral function at
         eta (float, optional): The broadening parameter for the spectral function. Defaults to 1e-6.
         local_projector (np.ndarray, optional): The local set of spin/orbitals to project the states onto. Defaults to np.array([1, 1, 0, 0]).
+        local_operator (np.ndarray, optional): Identical to local projector
         n_k (int, optional): The number of k points to sample, if None will be sqrt(n_vertices). Defaults to None.
 
     Returns:
         np.ndarray: The spectral function
     """
+    local_projector = local_operator
 
+    
     if n_k is None:
         n_k = np.sqrt(lattice.n_vertices).astype(int)
         # print(n_k)
@@ -445,4 +451,4 @@ def spectral_function_old(
                 projected_state.conj() @ resolvent @ projected_state
             )
 
-    return spectral_function
+    return -np.imag(spectral_function)
