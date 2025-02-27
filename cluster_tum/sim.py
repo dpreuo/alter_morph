@@ -23,6 +23,7 @@ def find_phase(**param):
         "t1": param['t1'],
         "t2": param['t2'],
         "J": param['J'],
+        "U": param['J'],
         "filling": param['filling'],
         "initial_m": np.full(lattice.n_vertices, 1),
         "initial_n": np.full(lattice.n_vertices, param['filling'] * 4),
