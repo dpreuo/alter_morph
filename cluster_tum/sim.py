@@ -25,10 +25,11 @@ def find_phase(**param):
         "J": param['J'],
         "filling": param['filling'],
         "initial_m": np.full(lattice.n_vertices, 1),
+        "initial_n": np.full(lattice.n_vertices, param['filling'] * 4),
         "theta_offset": param['theta_offset'],
     }
 
-    m_values = hartree_fock(
+    m_values, n_values = hartree_fock(
         param['lattice'],
         initial_parameters,
         param['iteration_steps'],
@@ -37,10 +38,11 @@ def find_phase(**param):
     )
 
     initial_parameters.pop('initial_m')
+    initial_parameters.pop('initial_n')
 
     saved_results = dict(
-        hparam = dict(**initial_parameters,m=m_values[-1]),
-        numerical_param = dict(m_values=m_values,iteration_steps=param['iteration_steps'], learning_rate=param['learning_rate'],tol_mdiff=param['tol_mdiff']), 
+        hparam = dict(**initial_parameters,m=m_values[-1],n=n_values[-1]),
+        numerical_param = dict(m_values=m_values,n_values=n_values,iteration_steps=param['iteration_steps'], learning_rate=param['learning_rate'],tol_mdiff=param['tol_mdiff']), 
     )
     
     pickle.dump(saved_results, open(param['name'] + '.pickle', 'wb'))
