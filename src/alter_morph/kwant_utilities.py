@@ -49,64 +49,64 @@ class Amorphous(kwant.builder.SiteFamily):
         # return 1
 
 
-def kwant_altermagnetic_hamiltonian(
-    lattice: Lattice,
-    t1: float,
-    t2: float,
-    J: float,
-    U: float,
-    m_values: np.ndarray,
-    n_values: np.ndarray,
-    theta_offset=0.0,
-    return_lattice=False,
-):
-    """This is the kwant implementation of the function alt_hamiltonian in the
-    hamiltonians module. Works the same but creates a kwant.Builder object.
+# def kwant_altermagnetic_hamiltonian(
+#     lattice: Lattice,
+#     t1: float,
+#     t2: float,
+#     J: float,
+#     U: float,
+#     m_values: np.ndarray,
+#     n_values: np.ndarray,
+#     theta_offset=0.0,
+#     return_lattice=False,
+# ):
+#     """This is the kwant implementation of the function alt_hamiltonian in the
+#     hamiltonians module. Works the same but creates a kwant.Builder object.
 
 
-    Args:
-        lattice (Lattice): The lattice to generate the Hamiltonian for
-        t1 (float): Strong hopping parameter where direction matches orbital
-        t2 (float): Weak hopping parameter where direction opposes orbital
-        J (float): Interacting coupling parameter
-        m_values (np.ndarray): Mean field values for the magnetic moments per site
-        return_lattice (bool, optional): Whether to return the kwant lattice
-            object for the lattice. Defaults to False.
+#     Args:
+#         lattice (Lattice): The lattice to generate the Hamiltonian for
+#         t1 (float): Strong hopping parameter where direction matches orbital
+#         t2 (float): Weak hopping parameter where direction opposes orbital
+#         J (float): Interacting coupling parameter
+#         m_values (np.ndarray): Mean field values for the magnetic moments per site
+#         return_lattice (bool, optional): Whether to return the kwant lattice
+#             object for the lattice. Defaults to False.
 
-    Returns:
-        kwant.Builder: The kwant.Builder object with the Hamiltonian
-        Amorphous: The site family object for the lattice (if return_lattice is True)
-    """
+#     Returns:
+#         kwant.Builder: The kwant.Builder object with the Hamiltonian
+#         Amorphous: The site family object for the lattice (if return_lattice is True)
+#     """
 
-    n_orbs = 4
-    syst = kwant.Builder()
-    k_lattice = Amorphous(n_orbs, lattice)
+#     n_orbs = 4
+#     syst = kwant.Builder()
+#     k_lattice = Amorphous(n_orbs, lattice)
 
-    for n in range(lattice.n_vertices):
-        vertex_neighbours = lattice.vertices.adjacent_vertices[n]
-        neighbour_magnetisations = m_values[vertex_neighbours]
-        total_magnetisation = np.sum(neighbour_magnetisations)
+#     for n in range(lattice.n_vertices):
+#         vertex_neighbours = lattice.vertices.adjacent_vertices[n]
+#         neighbour_magnetisations = m_values[vertex_neighbours]
+#         total_magnetisation = np.sum(neighbour_magnetisations)
 
-        neighbour_densities = n_values[vertex_neighbours]
-        total_density = np.sum(neighbour_densities)
+#         neighbour_densities = n_values[vertex_neighbours]
+#         total_density = np.sum(neighbour_densities)
 
-        syst[k_lattice(n)] = (
-            J * total_magnetisation * np.diag(np.array([-1, 1, 1, -1]))
-            + U * total_density * np.eye(n_orbs)
-        )
+#         syst[k_lattice(n)] = (
+#             J * total_magnetisation * np.diag(np.array([-1, 1, 1, -1]))
+#             + U * total_density * np.eye(n_orbs)
+#         )
 
-    for n_edge in range(lattice.n_edges):
-        vector = lattice.edges.vectors[n_edge]
-        e0, e1 = lattice.edges.indices[n_edge]
-        theta = np.arctan2(vector[0], vector[1])
-        h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta, theta_offset))
+#     for n_edge in range(lattice.n_edges):
+#         vector = lattice.edges.vectors[n_edge]
+#         e0, e1 = lattice.edges.indices[n_edge]
+#         theta = np.arctan2(vector[0], vector[1])
+#         h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta, theta_offset))
 
-        syst[k_lattice(e0), k_lattice(e1)] = h0_term
-        # syst[k_lattice(e1), k_lattice(e0)] = h0_term.T.conj()
+#         syst[k_lattice(e0), k_lattice(e1)] = h0_term
+#         # syst[k_lattice(e1), k_lattice(e0)] = h0_term.T.conj()
 
-    if return_lattice:
-        return syst, k_lattice
-    return syst
+#     if return_lattice:
+#         return syst, k_lattice
+#     return syst
 
 
 def cumulative_density(dos: kwant.kpm.SpectralDensity, density=True):
