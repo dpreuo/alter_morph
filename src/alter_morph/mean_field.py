@@ -41,13 +41,15 @@ def hartree_fock(
     lattice: Lattice,
     initial_parameters: dict,
     n_steps: int,
-    mixing_proportion=0.4,
+    mixing_proportion=0.2,
     verbose=True,
     tol_mdiff=1e-6,
+    leave=True,
+    adjust_learning_rate=False,
     **kwargs,
 ):
 
-    prange = tqdm(range(n_steps)) if verbose else range(n_steps)
+    prange = tqdm(range(n_steps), leave=leave) if verbose else range(n_steps)
     skip_counter = 0
 
     m_values = np.zeros((n_steps + 1, lattice.n_vertices))
@@ -71,7 +73,7 @@ def hartree_fock(
         diff = np.linalg.norm(m_values[n + 1] - m_values[n])
         avg_m = np.mean(m_values[n + 1])
 
-        if verbose:
+        if verbose and not adjust_learning_rate:
             prange.set_description(f"Avg:{avg_m:.2f}, diff: {diff:.6f}")
 
         # if the difference is small enough, we can stop
@@ -81,6 +83,28 @@ def hartree_fock(
                 m_values = m_values[: n + 1]
                 n_values = n_values[: n + 1]
                 break
+            
+        u = 4
+        if adjust_learning_rate and n > u:
+
+            last_m_vals = m_values[n-u:n]
+            last_m_vals = last_m_vals[::-1]
+
+            dif = last_m_vals[:-2] - last_m_vals[1:-1]
+            next_dif = last_m_vals[:-2] - last_m_vals[2:]
+
+            dif_vals = np.abs(dif)
+            double_dif_vals = np.abs(next_dif)
+
+            zizag = np.mean(dif_vals/double_dif_vals)
+            if verbose:
+                prange.set_description(f"Avg:{avg_m:.2f}, diff: {diff:.6f}, zigzag: {zizag:.4f}, mix: {mixing_proportion:.4f}")
+            if zizag > 1:
+                # mix more
+                mixing_proportion = 0.95-(0.95-mixing_proportion)*0.95 
+            else:
+                # mix less
+                mixing_proportion = (mixing_proportion-0.05)*0.95+0.05
 
     return m_values, n_values
 

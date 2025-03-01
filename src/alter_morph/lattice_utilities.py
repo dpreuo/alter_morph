@@ -197,6 +197,11 @@ def alter_lattice_maker(length: int, type: str) -> Lattice:
         dimer_exp = np.zeros(exp_lat.n_edges)
         dimer_exp[: l2.n_edges] = 1
         lattice = gu.dimer_collapse(exp_lat, dimer_exp)
+    elif type == 'bipartite':
+        lattice = generate_lattice(uniform((length**2)//4))
+        dimer = gu.dimerise(lattice)
+        lattice = gu.dimer_collapse(lattice,dimer)
+        lattice = gu.vertices_to_polygon(lattice)
     else:
         raise ValueError(f"Type {type} not recognized.")
 
