@@ -72,8 +72,11 @@ def hartree_fock(
         # check for convergence
         diff = np.linalg.norm(m_values[n + 1] - m_values[n])/(np.sqrt(len(m_values[n + 1])))
         avg_m = np.mean(m_values[n + 1])
-
-        if verbose and not adjust_learning_rate:
+        
+        u = 6
+        learning_condition = adjust_learning_rate and n > u
+        
+        if verbose and not learning_condition:
             prange.set_description(f"Avg:{avg_m:.2f}, diff: {diff:.6f}")
 
         # if the difference is small enough, we can stop
@@ -84,8 +87,8 @@ def hartree_fock(
                 n_values = n_values[: n + 1]
                 break
             
-        u = 6
-        if adjust_learning_rate and n > u:
+
+        if learning_condition:
 
             last_m_vals = m_values[n-u:n]
             last_m_vals = last_m_vals[::-1]
