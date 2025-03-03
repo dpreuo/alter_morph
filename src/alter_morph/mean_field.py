@@ -70,7 +70,7 @@ def hartree_fock(
 
 
         # check for convergence
-        diff = np.linalg.norm(m_values[n + 1] - m_values[n])
+        diff = np.linalg.norm(m_values[n + 1] - m_values[n])/(np.sqrt(len(m_values[n + 1])))
         avg_m = np.mean(m_values[n + 1])
 
         if verbose and not adjust_learning_rate:
@@ -84,7 +84,7 @@ def hartree_fock(
                 n_values = n_values[: n + 1]
                 break
             
-        u = 4
+        u = 6
         if adjust_learning_rate and n > u:
 
             last_m_vals = m_values[n-u:n]
@@ -101,7 +101,7 @@ def hartree_fock(
                 prange.set_description(f"Avg:{avg_m:.2f}, diff: {diff:.6f}, zigzag: {zizag:.4f}, mix: {mixing_proportion:.4f}")
             if zizag > 1:
                 # mix more
-                mixing_proportion = 0.95-(0.95-mixing_proportion)*0.95 
+                mixing_proportion = 0.98-(0.98-mixing_proportion)*0.98 
             else:
                 # mix less
                 mixing_proportion = (mixing_proportion-0.05)*0.95+0.05

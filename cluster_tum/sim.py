@@ -36,6 +36,8 @@ def find_phase(**param):
         param['iteration_steps'],
         mixing_proportion=param['learning_rate'],
         verbose=False,
+        tol_mdiff=param['tol_mdiff'],
+        adjust_learning_rate=True
     )
 
     initial_parameters.pop('initial_m')

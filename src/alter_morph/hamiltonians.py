@@ -6,7 +6,7 @@ def _hopping_matrix(t1, t2, theta, theta_offset=0.0, n=1):
     # val and perus ansatz for the orbital resolved hopping matrix
     theta = theta + theta_offset
     tdiff = t1 - t2
-    return -np.array(
+    return -np.abs(np.array(
         [
             [
                 tdiff * np.cos(n * theta) * np.cos(n * theta) + t2,
@@ -17,7 +17,7 @@ def _hopping_matrix(t1, t2, theta, theta_offset=0.0, n=1):
                 tdiff * np.sin(n * theta) * np.sin(n * theta) + t2,
             ],
         ]
-    )
+    ))
 
 
 def alt_hamiltonian(
@@ -46,7 +46,7 @@ def alt_hamiltonian(
         np.ndarray: The Hamiltonian matrix
     """
 
-    # basis is (up x, down x , up y, down y) ###this should be (up x, up y, down x, down y)
+    # this basis should be (up x, up y, down x, down y)
 
     # initialize the Hamiltonian
     ham_type = (

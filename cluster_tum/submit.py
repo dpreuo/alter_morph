@@ -4,52 +4,56 @@ import cluster_jobs
 import copy
 import itertools
 import numpy as np  # only needed if you use np below
-import pickle # only needed if you use np below
+import pickle  # only needed if you use np below
 
 config = {
-    'jobname': 'altermorph',
-    'task': {
-        'type': 'PythonFunctionCall',
-        'module': 'sim', #specify file from which to import a costly function
-        'function': 'find_phase' #name of the function which solves system for specific paramteres
+    "jobname": "altermorph",
+    "task": {
+        "type": "PythonFunctionCall",
+        "module": "sim",  # specify file from which to import a costly function
+        "function": "find_phase",  # name of the function which solves system for specific paramteres
     },
-    'task_parameters': [],  # list of dict containing the **kwargs given to the `function`
-    'requirements_slurm': {  # passed on to SLURM
-        'mem': '1G',
-        'time': '0:30:00',  # d-hh:mm:ss
-        'nodes': 1,  # number of nodes
-        'mail-user': "valentin.leeb@tum.de",
-        'qos':'short',
+    "task_parameters": [],  # list of dict containing the **kwargs given to the `function`
+    "requirements_slurm": {  # passed on to SLURM
+        "mem": "1G",
+        "time": "0:30:00",  # d-hh:mm:ss
+        "nodes": 1,  # number of nodes
+        "mail-user": "valentin.leeb@tum.de",
+        "qos": "short",
     },
-    'options': {  # further replacements for the job script; used to determine extra requirements
+    "options": {  # further replacements for the job script; used to determine extra requirements
         # 'mail': 'no@example.com',
-        'cores_per_task': 1,
-    }
+        "cores_per_task": 1,
+    },
 }
 
 import sys, os
-lattice_name = 'voronoi_20.pickle'
 
-lattice = pickle.load(open(os.path.dirname(__file__)+'/'+lattice_name,'rb')) #voronoi with system length 20
+lattice_name = "voronoi_20.pickle"
 
-params = {	'name': ['MF'],
-            'J':np.linspace(0,1,21),
-            'filling':np.linspace(0,1,11),
-            't1':[1],
-            't2':[0.5],
-            'theta_offset':[0],
-            'lattice':[lattice],#INCLUDE the voronoi lattice here as parameter
-            #numerical parameters
-            'learning_rate':[0.5],
-            'iteration_steps': [200],
-            'tol_mdiff':[1e-3],
-            }
-            
+lattice = pickle.load(
+    open(os.path.dirname(__file__) + "/" + lattice_name, "rb")
+)  # voronoi with system length 20
+
+params = {
+    "name": ["MF"],
+    "J": np.linspace(0, 1, 21),
+    "filling": np.linspace(0.01, 0.99, 11),
+    "t1": [1],
+    "t2": [0.5],
+    "theta_offset": [0],
+    "lattice": [lattice],  # INCLUDE the voronoi lattice here as parameter
+    # numerical parameters
+    "learning_rate": [0.5],
+    "iteration_steps": [400],
+    "tol_mdiff": [1e-4],
+}
+
 ## for all possible list values
-for j,entry in enumerate(itertools.product(*[params[i] for i in params])):
+for j, entry in enumerate(itertools.product(*[params[i] for i in params])):
     kwargs = {param: value for param, value in zip(params, entry)}
-    kwargs['name'] = kwargs['name'] + str(j)
-    config['task_parameters'].append(copy.deepcopy(kwargs))
+    kwargs["name"] = kwargs["name"] + str(j)
+    config["task_parameters"].append(copy.deepcopy(kwargs))
 
 
 # cluster_jobs.TaskArray(**config).run_local(task_ids=[2, 3], parallel=2) # run selected tasks
