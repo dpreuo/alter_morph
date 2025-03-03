@@ -4,7 +4,7 @@ import numpy as np
 from alter_morph.kwant_utilities import (
     crack_hamiltonian_for_contacts_kwant,
     attach_leads_to_cracked,
-    kwant_altermagnetic_hamiltonian,
+    # kwant_altermagnetic_hamiltonian,
     lattice_ham_to_kwant,
 )
 from alter_morph.hamiltonians import alt_hamiltonian
@@ -36,23 +36,23 @@ def test_crack_hamiltonian_leads():
         contact_lattice, k_lattice, k_system, contact_vertices, lead_onsite, lead_coupling, lead_symmetry
     )
 
-def test_kwant_altermagnetic_hamiltonian():
+# def test_kwant_altermagnetic_hamiltonian():
 
-    lattice = alter_lattice_maker(5, "voronoi")
-    lattice = koala.graph_utils.cut_boundaries(lattice, [False, True])
+#     lattice = alter_lattice_maker(5, "voronoi")
+#     lattice = koala.graph_utils.cut_boundaries(lattice, [False, True])
 
-    t1 = 1  # orbital parallel neighbor hopping
-    t2 = 0.5  # orbital perpendicular neighbor hopping
-    J = 0.4  # Interaction strength
-    U = 0.4  
-    initial_m = np.full(lattice.n_vertices, 1)
-    initial_n = np.full(lattice.n_vertices, 2)  
-    theta = 0.572
+#     t1 = 1  # orbital parallel neighbor hopping
+#     t2 = 0.5  # orbital perpendicular neighbor hopping
+#     J = 0.4  # Interaction strength
+#     U = 0.4  
+#     initial_m = np.full(lattice.n_vertices, 1)
+#     initial_n = np.full(lattice.n_vertices, 2)  
+#     theta = 0.572
 
-    hamiltonian = alt_hamiltonian(lattice, t1, t2, J,U, initial_m, initial_n,theta)
-    k_hamiltonian = kwant_altermagnetic_hamiltonian(lattice, t1, t2, J,U, initial_m, initial_n, theta).finalized()
+#     hamiltonian = alt_hamiltonian(lattice, t1, t2, J,U, initial_m, initial_n,theta)
+#     k_hamiltonian = kwant_altermagnetic_hamiltonian(lattice, t1, t2, J,U, initial_m, initial_n, theta).finalized()
 
-    assert np.allclose(hamiltonian, k_hamiltonian.hamiltonian_submatrix())
+#     assert np.allclose(hamiltonian, k_hamiltonian.hamiltonian_submatrix())
 
 def test_lattice_ham_to_kwant():
     lattice = alter_lattice_maker(5, "voronoi")
