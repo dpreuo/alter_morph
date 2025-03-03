@@ -37,8 +37,8 @@ lattice = pickle.load(
 
 params = {
     "name": ["MF"],
-    "J": np.linspace(0, 1, 21),
-    "filling": np.linspace(0.01, 0.99, 11),
+    "J": np.linspace(0, .8, 21),
+    "filling": np.linspace(0.01, 0.99, 21),
     "t1": [1],
     "t2": [0.5],
     "theta_offset": [0],
