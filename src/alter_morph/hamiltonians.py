@@ -25,7 +25,6 @@ def alt_hamiltonian(
     t1: float,
     t2: float,
     J: float,
-    U: float,
     m_values: np.ndarray,
     n_values: np.ndarray,
     theta_offset=0.0,
@@ -78,16 +77,10 @@ def alt_hamiltonian(
 
     # generate the onsite interaction based terms
     for n in range(lattice.n_vertices):
-        vertex_neighbours = lattice.vertices.adjacent_vertices[n]
-        neighbour_magnetisations = m_values[vertex_neighbours]
-        neighbour_densities = n_values[vertex_neighbours]
-
-        total_magnetisation = np.sum(neighbour_magnetisations)
-        total_density = np.sum(neighbour_densities)
 
         ham[4 * n : 4 * n + 4, 4 * n : 4 * n + 4] += (
-            np.diag(J * total_magnetisation *np.array([-1, 1, 1, -1])
-                     + U * total_density)
+            np.diag(J * m_values[n] *np.array([-1, 1, 1, -1])
+                     + J * n_values[n])
         )
     
     if add_energy_shift:

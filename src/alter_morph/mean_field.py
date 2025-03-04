@@ -19,7 +19,6 @@ def single_hartree_fock_step(
         initial_parameters["t1"],
         initial_parameters["t2"],
         initial_parameters["J"],
-        initial_parameters['U'],
         m_values,
         n_values,
         theta_offset=initial_parameters["theta_offset"],
