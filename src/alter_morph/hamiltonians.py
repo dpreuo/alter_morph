@@ -6,18 +6,20 @@ def _hopping_matrix(t1, t2, theta, theta_offset=0.0, n=1):
     # val and perus ansatz for the orbital resolved hopping matrix
     theta = theta + theta_offset
     tdiff = t1 - t2
-    return -np.abs(np.array(
+    arr = np.array(
         [
             [
                 tdiff * np.cos(n * theta) * np.cos(n * theta) + t2,
                 tdiff * np.cos(n * theta) * np.sin(n * theta),
             ],
             [
-                tdiff * np.cos(n * theta) * np.sin(n * theta),
+                -tdiff * np.cos(n * theta) * np.sin(n * theta),
                 tdiff * np.sin(n * theta) * np.sin(n * theta) + t2,
             ],
         ]
-    ))
+    )
+    
+    return -arr
 
 
 def alt_hamiltonian(
