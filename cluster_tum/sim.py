@@ -51,6 +51,53 @@ def find_phase(**param):
     pickle.dump(saved_results, open(param['name'] + '.pickle', 'wb'))
     
 
+def find_all_Jscan(**param):
+    """
+    finds the converged mvalues for a all points specfied by Js in phase space. Stores results in pickle file
+    """
+    lattice = param['lattice']
+    initial_parameters = {
+        "t1": param['t1'],
+        "t2": param['t2'],
+        "filling": param['filling'],
+        "initial_m": np.full(lattice.n_vertices, 1),
+        "initial_n": np.full(lattice.n_vertices, param['filling'] * 4),
+        "theta_offset": param['theta_offset'],
+    }
+
+    saved_results=[]
+    #run stuff starting with largest J to speed up convergence
+    for J in param['Js'][::-1]:
+        initial_parameters['J'] = J
+        initial_parameters['U'] = J
+
+        m_values, n_values = hartree_fock(
+            param['lattice'],
+            initial_parameters,
+            param['iteration_steps'],
+            mixing_proportion=param['learning_rate'],
+            verbose=False,
+            tol_mdiff=param['tol_mdiff'],
+            adjust_learning_rate=True
+        )
+
+        #save results
+        initial_parameters.pop('initial_m')
+        initial_parameters.pop('initial_n')
+        saved_results.append(dict(
+            hparam = dict(**initial_parameters,m=m_values[-1],n=n_values[-1]),
+            numerical_param = dict(m_values=m_values,n_values=n_values,iteration_steps=param['iteration_steps'], learning_rate=param['learning_rate'],tol_mdiff=param['tol_mdiff']), 
+            ))
+
+        #take values from last run as initial values
+        initial_parameters['m_values'] = m_values[-1]
+        initial_parameters['n_values'] = n_values[-1]
+
+    saved_results = saved_results[::-1]
+    
+    pickle.dump(saved_results, open(param['name'] + '.pickle', 'wb'))
+    
+
 
 def generateFilename(name='_',**kwargs):
     """generates an unique filname"""
