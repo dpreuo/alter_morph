@@ -412,6 +412,8 @@ def spectral_function(
     n_orbitals = len(local_operator)
     #######################
     k_vals = np.arange(-n_k // 2, n_k // 2) * 2 * np.pi
+    #kmax = n_vertices**0.5 * np.pi
+    #k_vals = np.linspace(-kmax,kmax,n_k)
     ks = np.array(np.meshgrid(k_vals, k_vals))  # .shape=(2,ky,kx)
 
     Ak = (
