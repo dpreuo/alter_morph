@@ -8,9 +8,12 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__))+'/src')
 
+
 import pickle
 import numpy as np
 from alter_morph.mean_field import hartree_fock
+from alter_morph.hamiltonians import alt_hamiltonian
+from scipy import linalg as la
 
 
 def find_phase(**param):
@@ -40,11 +43,24 @@ def find_phase(**param):
         adjust_learning_rate=True
     )
 
+    hamiltonian = alt_hamiltonian(
+        lattice,
+        initial_parameters['t1'],
+        initial_parameters['t2'],
+        initial_parameters['J'],
+        initial_parameters['U'],
+        m_values[-1],
+        n_values[-1],
+        initial_parameters['theta_offset']
+    )
+
+    energies = la.eigvalsh(hamiltonian)
+
     initial_parameters.pop('initial_m')
     initial_parameters.pop('initial_n')
 
     saved_results = dict(
-        hparam = dict(**initial_parameters,m=m_values[-1],n=n_values[-1]),
+        hparam = dict(**initial_parameters,m=m_values[-1],n=n_values[-1],energies=energies),
         numerical_param = dict(m_values=m_values,n_values=n_values,iteration_steps=param['iteration_steps'], learning_rate=param['learning_rate'],tol_mdiff=param['tol_mdiff']), 
     )
     
@@ -81,11 +97,24 @@ def find_all_Jscan(**param):
             adjust_learning_rate=True
         )
 
+        hamiltonian = alt_hamiltonian(
+            lattice,
+            initial_parameters['t1'],
+            initial_parameters['t2'],
+            initial_parameters['J'],
+            initial_parameters['U'],
+            m_values[-1],
+            n_values[-1],
+            initial_parameters['theta_offset']
+        )
+
+        energies = la.eigvalsh(hamiltonian)
+
         #save results
         initial_parameters.pop('initial_m')
         initial_parameters.pop('initial_n')
         saved_results.append(dict(
-            hparam = dict(**initial_parameters,m=m_values[-1],n=n_values[-1]),
+            hparam = dict(**initial_parameters,m=m_values[-1],n=n_values[-1],energies=energies),
             numerical_param = dict(m_values=m_values,n_values=n_values,iteration_steps=param['iteration_steps'], learning_rate=param['learning_rate'],tol_mdiff=param['tol_mdiff']), 
             ))
 
