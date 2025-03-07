@@ -110,7 +110,7 @@ def find_all_Jscan(**param):
             n_values[-1],
             theta_offset=param["theta_offset"],
         )
-        energies, _ = la.eigh(hamiltonian)
+        energies = la.eigvalsh(hamiltonian)
 
         #save results
         initial_parameters.pop('initial_m')
