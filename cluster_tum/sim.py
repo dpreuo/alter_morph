@@ -11,6 +11,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__))+'/src')
 import pickle
 import numpy as np
 from alter_morph.mean_field import hartree_fock
+from alter_morph.hamiltonians import alt_hamiltonian
+from scipy import linalg as la
 
 
 def find_phase(**param):
@@ -81,17 +83,31 @@ def find_all_Jscan(**param):
             adjust_learning_rate=True
         )
 
+        #get energies
+        hamiltonian = alt_hamiltonian(
+            lattice,
+            param["t1"],
+            param["t2"],
+            J,
+            J,
+            m_values[-1],
+            n_values[-1],
+            theta_offset=param["theta_offset"],
+        )
+        energies, _ = la.eigh(hamiltonian)
+
         #save results
         initial_parameters.pop('initial_m')
         initial_parameters.pop('initial_n')
         saved_results.append(dict(
             hparam = dict(**initial_parameters,m=m_values[-1],n=n_values[-1]),
+            energies = energies,
             numerical_param = dict(m_values=m_values,n_values=n_values,iteration_steps=param['iteration_steps'], learning_rate=param['learning_rate'],tol_mdiff=param['tol_mdiff']), 
             ))
 
         #take values from last run as initial values
-        initial_parameters['m_values'] = m_values[-1]
-        initial_parameters['n_values'] = n_values[-1]
+        initial_parameters['initial_m'] = m_values[-1]
+        initial_parameters['initial_n'] = n_values[-1]
 
     saved_results = saved_results[::-1]
     
