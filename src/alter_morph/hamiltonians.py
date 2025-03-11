@@ -387,6 +387,7 @@ def spectral_function(
     eta=1e-6,
     local_operator=np.array([1, 1, 1, 1]),
     n_k=None,
+    scale=1,
 ):
     """
     Calculates the spectral function for a given set of energies
@@ -413,7 +414,7 @@ def spectral_function(
     n_vertices = lattice.n_vertices
     n_orbitals = len(local_operator)
     #######################
-    k_vals = np.arange(-n_k // 2, n_k // 2) * 2 * np.pi
+    k_vals = np.arange(-n_k // 2, n_k // 2) * 2 * np.pi*scale
     #kmax = n_vertices**0.5 * np.pi
     #k_vals = np.linspace(-kmax,kmax,n_k)
     ks = np.array(np.meshgrid(k_vals, k_vals))  # .shape=(2,ky,kx)
@@ -499,3 +500,77 @@ def spectral_function_old(
             )
 
     return spectral_function
+
+def spectral_path(
+    lattice: Lattice,
+    energies: np.ndarray,
+    states: np.ndarray,
+    eta=1e-6,
+    local_operator=np.array([1, 1, 1, 1]),
+    n_k=50,
+    n_energy=100,
+    path=np.array([[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]),
+    range_plus=0.5
+):
+    """
+    Calculate the spectral function along a specified path in k-space, resolved in energy.
+
+    Args:
+        lattice (Lattice): The lattice object containing the vertices and edges.
+        energies (np.ndarray): Array of energy eigenvalues.
+        states (np.ndarray): Array of eigenstates corresponding to the energies.
+        eta (float, optional): Broadening parameter for the spectral function. Defaults to 1e-6.
+        local_operator (np.ndarray, optional): Local operator for the spectral function calculation. Defaults to np.array([1, 1, 1, 1]).
+        n_k (int, optional): Number of k-points along each segment of the path. Defaults to 50.
+        n_energy (int, optional): Number of energy points for the spectral function. Defaults to 100.
+        path (np.ndarray, optional): Array of k-points defining the path in k-space. Defaults to np.array([[0, 0], [-1, 0], [-1, 1], [0, 1], [0, 0]]).
+        range_plus (float, optional): Range of energy values to include above the maximum and minimum energy. Defaults to 0.5.
+
+    Returns:
+        np.ndarray: Spectral function values along the specified path in k-space.
+    """
+
+    system_k_size = np.sqrt(lattice.n_vertices).astype(int)
+    k_walk = np.concatenate(
+        [
+            np.linspace(path[i], path[i + 1], n_k, endpoint=False)
+            for i in range(len(path) - 1)
+        ]
+    )
+    k_walk = k_walk * 2 * np.pi * system_k_size
+
+    energy_vals = np.linspace(np.min(energies)-range_plus, np.max(energies)+range_plus, n_energy)
+
+    n_vertices = lattice.n_vertices
+    n_orbitals = len(local_operator)
+    positions = lattice.vertices.positions
+
+    Ak = eta / (
+        np.pi
+        * ((energies - energy_vals[:, None]) ** 2 + eta**2)
+        * n_vertices
+        * n_orbitals
+    )  # .shape=(energy_steps,n_vertices*n_orbitals)
+    phase = np.exp(
+        1j * np.einsum("pr,nr->pn", k_walk, positions)
+    )  # .shape=(n_steps,n_vertices)
+
+    kronO = np.einsum(
+        "apn,ao->pno", phase[np.newaxis], local_operator[np.newaxis]
+    ).reshape(phase.shape[0], phase.shape[-1] * local_operator.shape[-1])
+    kron1 = np.einsum(
+        "apn,ao->pno", phase[np.newaxis], np.ones(n_orbitals)[np.newaxis]
+    ).reshape(phase.shape[0], phase.shape[-1] * local_operator.shape[-1])
+
+    spectral_function = np.einsum(
+        "eb,bc,cp,pa,ab->pe",
+        Ak,
+        states.conj().T,
+        kron1.conj().T,
+        kronO,
+        states,
+        optimize=True,
+    )
+
+    return spectral_function.real
+
