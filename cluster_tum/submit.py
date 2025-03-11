@@ -11,12 +11,12 @@ config = {
     "task": {
         "type": "PythonFunctionCall",
         "module": "sim",  # specify file from which to import a costly function
-        "function": "find_phase",  # name of the function which solves system for specific paramteres
+        "function": "find_all_Jscan",  # name of the function which solves system for specific paramteres
     },
     "task_parameters": [],  # list of dict containing the **kwargs given to the `function`
     "requirements_slurm": {  # passed on to SLURM
-        "mem": "1G",
-        "time": "0:30:00",  # d-hh:mm:ss
+        "mem": "2G",
+        "time": "2:00:00",  # d-hh:mm:ss
         "nodes": 1,  # number of nodes
         "mail-user": "valentin.leeb@tum.de",
         "qos": "short",
@@ -37,8 +37,9 @@ lattice = pickle.load(
 
 params = {
     "name": ["MF"],
-    "J": np.linspace(0, .8, 21),
-    "filling": np.linspace(0.01, 0.99, 21),
+    #"J": np.linspace(0, .8, 21),
+    "Js": [np.linspace(0, .8, 101)],
+    "filling": np.linspace(0., 1., 41),
     "t1": [1],
     "t2": [0.5],
     "theta_offset": [0],
