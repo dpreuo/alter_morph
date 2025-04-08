@@ -33,6 +33,7 @@ def alt_hamiltonian(
     theta_offset=0.0,
     boundary_phase=None,
     add_energy_shift=False,
+    orbital_symmetry=1,
 ):
     """Generates an altermagnetic Hamiltonian for a given lattice
 
@@ -64,7 +65,7 @@ def alt_hamiltonian(
         crossing = lattice.edges.crossing[n_edge]
         e0, e1 = lattice.edges.indices[n_edge]
         theta = np.arctan2(vector[0], vector[1])
-        h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta, theta_offset))
+        h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta, theta_offset, orbital_symmetry))
 
         # and apply boundary phase if twisting boundaries
         if (
