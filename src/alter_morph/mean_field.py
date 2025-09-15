@@ -11,7 +11,8 @@ def single_hartree_fock_step(
     m_values: np.ndarray,
     n_values: np.ndarray,
     boundary_phase=None,
-    uniform_m=False
+    uniform_m=False,
+    orbital_symmetry=1,
 ):
     # make and solve the Hamiltonian
     hamiltonian = alt_hamiltonian(
@@ -24,6 +25,7 @@ def single_hartree_fock_step(
         n_values,
         theta_offset=initial_parameters["theta_offset"],
         boundary_phase=boundary_phase,
+        orbital_symmetry=orbital_symmetry,
     )
     energies, states = la.eigh(hamiltonian)
 
