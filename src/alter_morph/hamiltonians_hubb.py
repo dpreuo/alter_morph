@@ -2,107 +2,6 @@ from koala.lattice import Lattice
 import numpy as np
 
 
-def _hopping_matrix(t1, t2, theta, theta_offset=0.0, n=1):
-    # val and perus ansatz for the orbital resolved hopping matrix
-    theta = theta + theta_offset
-    tdiff = t1 - t2
-    arr = np.array(
-        [
-            [
-                tdiff * np.cos(n * theta) * np.cos(n * theta) + t2,
-                tdiff * np.cos(n * theta) * np.sin(n * theta),
-            ],
-            [
-                -tdiff * np.cos(n * theta) * np.sin(n * theta),
-                tdiff * np.sin(n * theta) * np.sin(n * theta) + t2,
-            ],
-        ]
-    )
-    
-    return -arr
-
-
-def alt_hamiltonian(
-    lattice: Lattice,
-    t1: float,
-    t2: float,
-    J: float,
-    U: float,
-    m_values: np.ndarray,
-    n_values: np.ndarray,
-    theta_offset=0.0,
-    boundary_phase=None,
-    add_energy_shift=False,
-):
-    """Generates an altermagnetic Hamiltonian for a given lattice
-
-    Args:
-        lattice (Lattice): The lattice to generate the Hamiltonian for
-        t1 (float): Strong hopping parameter where direction matches orbital
-        t2 (float): Weak hopping parameter where direction opposes orbital
-        J (float): Interacting coupling parameter
-        m_values (np.ndarray): Mean field values for the magnetic moments per site
-        boundary_phase (np.ndarray, optional): Phase for twisted boundary conditions in x and y. Defaults to 0.
-
-    Returns:
-        np.ndarray: The Hamiltonian matrix
-    """
-
-    # this basis should be (up x, up y, down x, down y)
-
-    # initialize the Hamiltonian
-    ham_type = (
-        complex
-        if boundary_phase is not None and np.any(np.nonzero(boundary_phase))
-        else float
-    )
-    ham = np.zeros((4 * lattice.n_vertices, 4 * lattice.n_vertices), dtype=ham_type)
-
-    # generate the hopping terms
-    for n_edge in range(lattice.n_edges):
-        vector = lattice.edges.vectors[n_edge]
-        crossing = lattice.edges.crossing[n_edge]
-        e0, e1 = lattice.edges.indices[n_edge]
-        theta = np.arctan2(vector[0], vector[1])
-        h0_term = np.kron(np.eye(2), _hopping_matrix(t1, t2, theta, theta_offset))
-
-        # and apply boundary phase if twisting boundaries
-        if (
-            boundary_phase is not None
-            and np.any(np.nonzero(crossing))
-            and np.any(np.nonzero(boundary_phase))
-        ):
-            phase = np.sum(boundary_phase * crossing)
-            h0_term = h0_term * np.exp(1j * phase)
-
-        ham[4 * e0 : 4 * e0 + 4, 4 * e1 : 4 * e1 + 4] = h0_term
-    ham += ham.T.conj()
-
-    # generate the onsite interaction based terms
-    for n in range(lattice.n_vertices):
-        vertex_neighbours = lattice.vertices.adjacent_vertices[n]
-        neighbour_magnetisations = m_values[vertex_neighbours]
-        neighbour_densities = n_values[vertex_neighbours]
-
-        total_magnetisation = np.sum(neighbour_magnetisations)
-        total_density = np.sum(neighbour_densities)
-
-        ham[4 * n : 4 * n + 4, 4 * n : 4 * n + 4] += (
-            np.diag(J * total_magnetisation *np.array([-1, 1, 1, -1])
-                     + U * total_density)
-        )
-    
-    if add_energy_shift:
-        edges = lattice.edges.indices
-        mag_prod = m_values[edges[:, 0]] * m_values[edges[:, 1]]
-        n_prod = n_values[edges[:, 0]] * n_values[edges[:, 1]]
-        energy_mean_field_shift = np.sum(mag_prod) * J - np.sum(n_prod) * U
-        energy_mean_field_shift = energy_mean_field_shift / (lattice.n_vertices*4)
-        # print(energy_mean_field_shift)
-        diag_norm = np.eye(4 * lattice.n_vertices)
-        ham += energy_mean_field_shift * diag_norm
-
-    return ham
 
 
 def hubb_hamiltonian(
@@ -111,7 +10,6 @@ def hubb_hamiltonian(
     U: float,
     m_values: np.ndarray,
     n_values: np.ndarray,
-    theta_offset=0.0,
     boundary_phase=None,
     add_energy_shift=False,
 ):
@@ -119,9 +17,8 @@ def hubb_hamiltonian(
 
     Args:
         lattice (Lattice): The lattice to generate the Hamiltonian for
-        t1 (float): Strong hopping parameter where direction matches orbital
-        t2 (float): Weak hopping parameter where direction opposes orbital
-        J (float): Interacting coupling parameter
+        t1 (float): hopping parameter between NN
+        H (float): Mean field Hubbard interaction
         m_values (np.ndarray): Mean field values for the magnetic moments per site
         boundary_phase (np.ndarray, optional): Phase for twisted boundary conditions in x and y. Defaults to 0.
 
@@ -129,7 +26,7 @@ def hubb_hamiltonian(
         np.ndarray: The Hamiltonian matrix
     """
 
-    # this basis should be (up x, up y, down x, down y)
+    # this basis should be (up, down)
 
     # initialize the Hamiltonian
     ham_type = (
@@ -200,11 +97,11 @@ def find_m_and_n_values(states, filling):
     fermi_occupation = np.linspace(0, 1, len(states)) <= filling
     local_densities = np.sum(states * states.conj() * fermi_occupation, axis=1)
 
-    m_legend = np.tile(np.array([1, -1, -1, 1]), len(states) // 4)
+    m_legend = np.tile(np.array([1, -1]), len(states) // 2)
     m_values = local_densities * m_legend
-    m_values = m_values.reshape(-1, 4).sum(axis=-1)
+    m_values = m_values.reshape(-1, 2).sum(axis=-1)
 
-    n_values = local_densities.reshape(-1, 4).sum(axis=-1)
+    n_values = local_densities.reshape(-1, 2).sum(axis=-1)
 
     # check for complex values - this should not happen
     if not np.allclose(m_values.imag, 0):
@@ -232,28 +129,28 @@ def find_m_per_state(v: np.ndarray):
         np.ndarray: The average mean field values per eigenstate
     """
 
-    m_legend = np.array([1, -1, -1, 1] * (len(v) // 4))
+    m_legend = np.array([1, -1] * (len(v) // 2))
     occupations = v * v.conj()
     m_x_s_resolved = m_legend[:, None] * occupations
     return np.sum(m_x_s_resolved, axis=0)
 
 
-def find_spin_per_state(v):
-    """
-    Given a set of eigenvectors, calculates the average spin expectation
-    value per eigenstate
+# def find_spin_per_state(v):
+#     """
+#     Given a set of eigenvectors, calculates the average spin expectation
+#     value per eigenstate
 
-    Args:
-        v (np.ndarray): The eigenvectors
+#     Args:
+#         v (np.ndarray): The eigenvectors
 
-    Returns:
-        np.ndarray: The average spin expectation value per eigenstate
-    """
+#     Returns:
+#         np.ndarray: The average spin expectation value per eigenstate
+#     """
 
-    spin_legend = np.array([1, -1, 1, -1] * (len(v) // 4))
-    occupations = v * v.conj()
-    spin_x_s_resolved = spin_legend[:, None] * occupations
-    return np.sum(spin_x_s_resolved, axis=0)
+#     spin_legend = np.array([1, -1, 1, -1] * (len(v) // 4))
+#     occupations = v * v.conj()
+#     spin_x_s_resolved = spin_legend[:, None] * occupations
+#     return np.sum(spin_x_s_resolved, axis=0)
 
 
 def fermi_probability(fermi_spectrum, beta):
